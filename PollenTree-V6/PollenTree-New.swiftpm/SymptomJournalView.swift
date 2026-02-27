@@ -2,11 +2,31 @@ import SwiftUI
 import SwiftData
 import Charts
 
+// 1. SAFE DATA DECOUPLING: We extract the data from SwiftData into a plain struct.
+// This prevents the Chart layout engine from crashing when reading database models.
+struct ChartDataPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let severity: Double
+    let risk: Double
+}
+
 struct SymptomJournalView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \SymptomLog.date, order: .reverse) private var logs: [SymptomLog]
     @State private var showingLogSheet = false
     @State private var selectedLog: SymptomLog?
+    
+    // Safely transforms our SwiftData logs into chart-safe data points
+    private var chartData: [ChartDataPoint] {
+        logs.sorted(by: { $0.date < $1.date }).map { log in
+            ChartDataPoint(
+                date: log.date,
+                severity: Double(log.sneezing + log.itchyEyes + log.congestion),
+                risk: (log.historicalRiskScore ?? 0.0) / 10.0 // Prevents AreaMark gap crashes
+            )
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -25,40 +45,39 @@ struct SymptomJournalView: View {
                     .padding(.horizontal)
                     .padding(.top)
                     
-                    // 📊 Data Visualization Section (CRASH FIXED)
-                    if logs.count >= 2 {
+                    // 📊 THE SAFE DATA VISUALIZATION CHART
+                    if chartData.count >= 2 {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Symptom vs. Pollen Correlation")
                                 .font(.headline)
                                 .padding(.horizontal)
                             
                             Chart {
-                                // PASS 1: Draw all the Symptom Lines as a single continuous block
-                                ForEach(logs.sorted(by: { $0.date < $1.date })) { log in
-                                    let totalSeverity = Double(log.sneezing + log.itchyEyes + log.congestion)
+                                // PASS 1: The Symptom Line
+                                ForEach(chartData) { point in
                                     LineMark(
-                                        x: .value("Date", log.date),
-                                        y: .value("Severity", totalSeverity)
+                                        x: .value("Date", point.date),
+                                        // CRITICAL: Both Y-axes must have the exact same label ("Score")
+                                        y: .value("Score", point.severity)
                                     )
                                     .foregroundStyle(by: .value("Type", "Symptoms"))
                                     .symbol(by: .value("Type", "Symptoms"))
-                                    .interpolationMethod(.monotone) // Makes the line smooth!
+                                    .interpolationMethod(.monotone)
                                 }
                                 
-                                // PASS 2: Draw all the Pollen Risk Areas as a separate continuous block
-                                ForEach(logs.sorted(by: { $0.date < $1.date })) { log in
-                                    if let risk = log.historicalRiskScore {
-                                        AreaMark(
-                                            x: .value("Date", log.date),
-                                            y: .value("Pollen Risk", risk / 10.0) // Scale to match symptom range (0-9)
-                                        )
-                                        .foregroundStyle(by: .value("Type", "Pollen Risk"))
-                                        .opacity(0.2)
-                                        .interpolationMethod(.monotone)
-                                    }
+                                // PASS 2: The Pollen Risk Area
+                                ForEach(chartData) { point in
+                                    AreaMark(
+                                        x: .value("Date", point.date),
+                                        // CRITICAL: Both Y-axes must have the exact same label ("Score")
+                                        y: .value("Score", point.risk)
+                                    )
+                                    .foregroundStyle(by: .value("Type", "Pollen Risk"))
+                                    .opacity(0.2)
+                                    .interpolationMethod(.monotone)
                                 }
                             }
-                            .frame(height: 200)
+                            .frame(height: 200) // CRITICAL: Prevents ScrollView infinite height crash
                             .padding()
                             .background(Color(UIColor.secondarySystemGroupedBackground))
                             .cornerRadius(20)
@@ -140,7 +159,6 @@ struct SymptomJournalView: View {
                                     selectedLog = log
                                 }
                                 .padding(.horizontal)
-                                // FIXED: Using context menu for safe deletion instead of .onDelete
                                 .contextMenu {
                                     Button(role: .destructive) {
                                         modelContext.delete(log)
@@ -247,7 +265,6 @@ struct LogSymptomView: View {
     @State private var congestion: SymptomSeverity = .none
     @State private var notes = ""
     
-    // In a real app, we'd use a shared ViewModel, but for simplicity in this view:
     @State private var currentRisk: Double = 45.0
     @State private var currentDominant: PollenType = .birch
     
@@ -276,7 +293,6 @@ struct LogSymptomView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        // Capture the risk data at the time of logging
                         let newLog = SymptomLog(
                             date: date,
                             sneezing: sneezing,

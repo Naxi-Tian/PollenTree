@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RootView: View {
     @AppStorage("hasCompletedSetup") var hasCompletedSetup: Bool = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("appLanguage") private var appLanguage = "English"
     @State private var isLaunching = true
     
     var body: some View {
@@ -32,5 +34,7 @@ struct RootView: View {
                 .animation(.easeInOut, value: hasCompletedSetup)
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
+        .environment(\.locale, Locale(identifier: appLanguage == "Chinese" ? "zh-Hans" : "en"))
     }
 }

@@ -34,10 +34,13 @@ struct SymptomJournalView: View {
                             
                             Chart {
                                 ForEach(logs.sorted(by: { $0.date < $1.date })) { log in
+                                    // Fix 1: Type Mismatch Fix (Double for both)
+                                    let totalSeverity = Double(log.sneezing + log.itchyEyes + log.congestion)
+                                    
                                     // Symptom Severity Line
                                     LineMark(
                                         x: .value("Date", log.date),
-                                        y: .value("Severity", log.sneezing + log.itchyEyes + log.congestion)
+                                        y: .value("Severity", totalSeverity)
                                     )
                                     .foregroundStyle(by: .value("Type", "Symptoms"))
                                     .symbol(by: .value("Type", "Symptoms"))
@@ -53,6 +56,7 @@ struct SymptomJournalView: View {
                                     }
                                 }
                             }
+                            // Fix 2: Strict frame height to prevent infinite layout crash
                             .frame(height: 200)
                             .padding()
                             .background(Color(UIColor.secondarySystemGroupedBackground))
@@ -130,15 +134,22 @@ struct SymptomJournalView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("No logs yet. Your history will appear here.")
                         } else {
+                            // Fix 3: Remove .onDelete and add contextMenu for deletion
                             ForEach(logs) { log in
                                 SymptomLogCard(log: log) {
                                     selectedLog = log
                                 }
                                 .padding(.horizontal)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(log)
+                                    } label: {
+                                        Label("Delete Log", systemImage: "trash")
+                                    }
+                                }
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("Log for \(log.date.formatted(date: .abbreviated, time: .omitted)). Symptoms: Sneezing \(log.sneezingSeverity.label), Itchy Eyes \(log.itchyEyesSeverity.label), Congestion \(log.congestionSeverity.label).")
                             }
-                            .onDelete(perform: deleteLogs)
                         }
                     }
                 }
@@ -153,12 +164,6 @@ struct SymptomJournalView: View {
             .sheet(item: $selectedLog) { log in
                 LogDetailView(log: log)
             }
-        }
-    }
-    
-    private func deleteLogs(offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(logs[index])
         }
     }
     

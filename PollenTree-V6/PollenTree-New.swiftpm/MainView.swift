@@ -279,7 +279,7 @@ struct ScienceInfoView: View {
                         ScienceSection(
                             title: "Biological Modeling",
                             description: "Our engine uses a multi-factor mathematical model to calculate your risk. It's not just about the count; it's about the biology.",
-                            icon: "dna",
+                            icon: "chart.bar.doc.horizontal",
                             color: .blue
                         )
                         

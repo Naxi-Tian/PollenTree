@@ -2,8 +2,6 @@ import SwiftUI
 import SwiftData
 import Charts
 
-// 1. SAFE DATA DECOUPLING: We extract the data from SwiftData into a plain struct.
-// This prevents the Chart layout engine from crashing when reading database models.
 struct ChartDataPoint: Identifiable {
     let id = UUID()
     let date: Date
@@ -17,13 +15,13 @@ struct SymptomJournalView: View {
     @State private var showingLogSheet = false
     @State private var selectedLog: SymptomLog?
     
-    // Safely transforms our SwiftData logs into chart-safe data points
     private var chartData: [ChartDataPoint] {
         logs.sorted(by: { $0.date < $1.date }).map { log in
             ChartDataPoint(
                 date: log.date,
-                severity: Double(log.sneezing.numericValue + log.itchyEyes.numericValue + log.congestion.numericValue),
-                risk: (log.historicalRiskScore ?? 0.0) / 10.0 // Prevents AreaMark gap crashes
+                // FIXED: They are already Ints, so we just add them directly!
+                severity: Double(log.sneezing + log.itchyEyes + log.congestion),
+                risk: (log.historicalRiskScore ?? 0.0) / 10.0 
             )
         }
     }
@@ -32,7 +30,6 @@ struct SymptomJournalView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header Section
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your Health Journey")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -45,7 +42,6 @@ struct SymptomJournalView: View {
                     .padding(.horizontal)
                     .padding(.top)
                     
-                    // 📊 THE SAFE DATA VISUALIZATION CHART
                     if chartData.count >= 2 {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Symptom vs. Pollen Correlation")
@@ -53,11 +49,9 @@ struct SymptomJournalView: View {
                                 .padding(.horizontal)
                             
                             Chart {
-                                // PASS 1: The Symptom Line
                                 ForEach(chartData) { point in
                                     LineMark(
                                         x: .value("Date", point.date),
-                                        // CRITICAL: Both Y-axes must have the exact same label ("Score")
                                         y: .value("Score", point.severity)
                                     )
                                     .foregroundStyle(by: .value("Type", "Symptoms"))
@@ -65,11 +59,9 @@ struct SymptomJournalView: View {
                                     .interpolationMethod(.monotone)
                                 }
                                 
-                                // PASS 2: The Pollen Risk Area
                                 ForEach(chartData) { point in
                                     AreaMark(
                                         x: .value("Date", point.date),
-                                        // CRITICAL: Both Y-axes must have the exact same label ("Score")
                                         y: .value("Score", point.risk)
                                     )
                                     .foregroundStyle(by: .value("Type", "Pollen Risk"))
@@ -77,7 +69,7 @@ struct SymptomJournalView: View {
                                     .interpolationMethod(.monotone)
                                 }
                             }
-                            .frame(height: 200) // CRITICAL: Prevents ScrollView infinite height crash
+                            .frame(height: 200) 
                             .padding()
                             .background(Color(UIColor.secondarySystemGroupedBackground))
                             .cornerRadius(20)
@@ -91,7 +83,6 @@ struct SymptomJournalView: View {
                         .accessibilityLabel("Chart showing correlation between your symptoms and pollen risk levels over time.")
                     }
                     
-                    // Insights Card
                     if logs.count >= 3 {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
@@ -111,11 +102,8 @@ struct SymptomJournalView: View {
                         .background(Color.orange.opacity(0.05))
                         .cornerRadius(20)
                         .padding(.horizontal)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Personal Insights: Your symptoms are most severe when \(mostReactiveAllergen()?.rawValue ?? "unknown") levels are high.")
                     }
                     
-                    // Log Button
                     Button {
                         showingLogSheet = true
                     } label: {
@@ -131,9 +119,7 @@ struct SymptomJournalView: View {
                         .cornerRadius(16)
                     }
                     .padding(.horizontal)
-                    .accessibilityLabel("Log Today's Symptoms")
                     
-                    // History Section
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Recent Logs")
                             .font(.headline)
@@ -151,8 +137,6 @@ struct SymptomJournalView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("No logs yet. Your history will appear here.")
                         } else {
                             ForEach(logs) { log in
                                 SymptomLogCard(log: log) {
@@ -166,8 +150,6 @@ struct SymptomJournalView: View {
                                         Label("Delete Log", systemImage: "trash")
                                     }
                                 }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Log for \(log.date.formatted(date: .abbreviated, time: .omitted)). Symptoms: Sneezing \(log.sneezing.label), Itchy Eyes \(log.itchyEyes.label), Congestion \(log.congestion.label).")
                             }
                         }
                     }
@@ -190,7 +172,7 @@ struct SymptomJournalView: View {
         var allergenScores: [PollenType: Int] = [:]
         for log in logs {
             if let dominant = log.historicalDominantAllergen {
-                let totalSeverity = log.sneezing.numericValue + log.itchyEyes.numericValue + log.congestion.numericValue
+                let totalSeverity = log.sneezing + log.itchyEyes + log.congestion
                 allergenScores[dominant, default: 0] += totalSeverity
             }
         }
@@ -219,9 +201,10 @@ struct SymptomLogCard: View {
                 Spacer()
                 
                 HStack(spacing: 12) {
-                    SymptomIcon(severity: log.sneezing, icon: "nose")
-                    SymptomIcon(severity: log.itchyEyes, icon: "eye")
-                    SymptomIcon(severity: log.congestion, icon: "lungs")
+                    // FIXED: Using the computed properties that return the Enum
+                    SymptomIcon(severity: log.sneezingSeverity, icon: "nose")
+                    SymptomIcon(severity: log.itchyEyesSeverity, icon: "eye")
+                    SymptomIcon(severity: log.congestionSeverity, icon: "lungs")
                 }
                 
                 Image(systemName: "chevron.right")
@@ -339,9 +322,10 @@ struct LogDetailView: View {
             List {
                 Section(header: Text("Summary")) {
                     LabeledContent("Date", value: log.date.formatted(date: .long, time: .omitted))
-                    LabeledContent("Sneezing", value: log.sneezing.label)
-                    LabeledContent("Itchy Eyes", value: log.itchyEyes.label)
-                    LabeledContent("Congestion", value: log.congestion.label)
+                    // FIXED: Using the computed properties to get the .label string
+                    LabeledContent("Sneezing", value: log.sneezingSeverity.label)
+                    LabeledContent("Itchy Eyes", value: log.itchyEyesSeverity.label)
+                    LabeledContent("Congestion", value: log.congestionSeverity.label)
                 }
                 
                 if !log.notes.isEmpty {

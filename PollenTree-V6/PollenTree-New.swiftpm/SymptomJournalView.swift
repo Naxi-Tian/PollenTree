@@ -22,7 +22,7 @@ struct SymptomJournalView: View {
         logs.sorted(by: { $0.date < $1.date }).map { log in
             ChartDataPoint(
                 date: log.date,
-                severity: Double(log.sneezing + log.itchyEyes + log.congestion),
+                severity: Double(log.sneezing.numericValue + log.itchyEyes.numericValue + log.congestion.numericValue),
                 risk: (log.historicalRiskScore ?? 0.0) / 10.0 // Prevents AreaMark gap crashes
             )
         }
@@ -167,7 +167,7 @@ struct SymptomJournalView: View {
                                     }
                                 }
                                 .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Log for \(log.date.formatted(date: .abbreviated, time: .omitted)). Symptoms: Sneezing \(log.sneezingSeverity.label), Itchy Eyes \(log.itchyEyesSeverity.label), Congestion \(log.congestionSeverity.label).")
+                                .accessibilityLabel("Log for \(log.date.formatted(date: .abbreviated, time: .omitted)). Symptoms: Sneezing \(log.sneezing.label), Itchy Eyes \(log.itchyEyes.label), Congestion \(log.congestion.label).")
                             }
                         }
                     }
@@ -190,7 +190,7 @@ struct SymptomJournalView: View {
         var allergenScores: [PollenType: Int] = [:]
         for log in logs {
             if let dominant = log.historicalDominantAllergen {
-                let totalSeverity = log.sneezing + log.itchyEyes + log.congestion
+                let totalSeverity = log.sneezing.numericValue + log.itchyEyes.numericValue + log.congestion.numericValue
                 allergenScores[dominant, default: 0] += totalSeverity
             }
         }
@@ -219,9 +219,9 @@ struct SymptomLogCard: View {
                 Spacer()
                 
                 HStack(spacing: 12) {
-                    SymptomIcon(severity: log.sneezingSeverity, icon: "nose")
-                    SymptomIcon(severity: log.itchyEyesSeverity, icon: "eye")
-                    SymptomIcon(severity: log.congestionSeverity, icon: "lungs")
+                    SymptomIcon(severity: log.sneezing, icon: "nose")
+                    SymptomIcon(severity: log.itchyEyes, icon: "eye")
+                    SymptomIcon(severity: log.congestion, icon: "lungs")
                 }
                 
                 Image(systemName: "chevron.right")
@@ -339,9 +339,9 @@ struct LogDetailView: View {
             List {
                 Section(header: Text("Summary")) {
                     LabeledContent("Date", value: log.date.formatted(date: .long, time: .omitted))
-                    LabeledContent("Sneezing", value: log.sneezingSeverity.label)
-                    LabeledContent("Itchy Eyes", value: log.itchyEyesSeverity.label)
-                    LabeledContent("Congestion", value: log.congestionSeverity.label)
+                    LabeledContent("Sneezing", value: log.sneezing.label)
+                    LabeledContent("Itchy Eyes", value: log.itchyEyes.label)
+                    LabeledContent("Congestion", value: log.congestion.label)
                 }
                 
                 if !log.notes.isEmpty {

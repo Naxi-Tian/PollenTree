@@ -25,7 +25,7 @@ struct SymptomJournalView: View {
                     .padding(.horizontal)
                     .padding(.top)
                     
-                    // Data Visualization Section
+                    // 📊 Data Visualization Section (CRASH FIXED)
                     if logs.count >= 2 {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Symptom vs. Pollen Correlation")
@@ -33,19 +33,20 @@ struct SymptomJournalView: View {
                                 .padding(.horizontal)
                             
                             Chart {
+                                // PASS 1: Draw all the Symptom Lines as a single continuous block
                                 ForEach(logs.sorted(by: { $0.date < $1.date })) { log in
-                                    // Fix 1: Type Mismatch Fix (Double for both)
                                     let totalSeverity = Double(log.sneezing + log.itchyEyes + log.congestion)
-                                    
-                                    // Symptom Severity Line
                                     LineMark(
                                         x: .value("Date", log.date),
                                         y: .value("Severity", totalSeverity)
                                     )
                                     .foregroundStyle(by: .value("Type", "Symptoms"))
                                     .symbol(by: .value("Type", "Symptoms"))
-                                    
-                                    // Historical Pollen Risk Area (if available)
+                                    .interpolationMethod(.monotone) // Makes the line smooth!
+                                }
+                                
+                                // PASS 2: Draw all the Pollen Risk Areas as a separate continuous block
+                                ForEach(logs.sorted(by: { $0.date < $1.date })) { log in
                                     if let risk = log.historicalRiskScore {
                                         AreaMark(
                                             x: .value("Date", log.date),
@@ -53,10 +54,10 @@ struct SymptomJournalView: View {
                                         )
                                         .foregroundStyle(by: .value("Type", "Pollen Risk"))
                                         .opacity(0.2)
+                                        .interpolationMethod(.monotone)
                                     }
                                 }
                             }
-                            // Fix 2: Strict frame height to prevent infinite layout crash
                             .frame(height: 200)
                             .padding()
                             .background(Color(UIColor.secondarySystemGroupedBackground))
@@ -134,12 +135,12 @@ struct SymptomJournalView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("No logs yet. Your history will appear here.")
                         } else {
-                            // Fix 3: Remove .onDelete and add contextMenu for deletion
                             ForEach(logs) { log in
                                 SymptomLogCard(log: log) {
                                     selectedLog = log
                                 }
                                 .padding(.horizontal)
+                                // FIXED: Using context menu for safe deletion instead of .onDelete
                                 .contextMenu {
                                     Button(role: .destructive) {
                                         modelContext.delete(log)
@@ -179,6 +180,7 @@ struct SymptomJournalView: View {
     }
 }
 
+// MARK: - Subcomponents
 struct SymptomLogCard: View {
     let log: SymptomLog
     let action: () -> Void

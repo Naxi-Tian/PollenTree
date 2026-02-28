@@ -17,7 +17,7 @@ struct MainView: View {
                         // Header with Location
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Pollen Tree")
+                                Text("Run, Pollen")
                                     .font(.system(size: 34, weight: .bold, design: .rounded))
                                     .accessibilityAddTraits(.isHeader)
                                 
@@ -97,6 +97,22 @@ struct MainView: View {
                         .padding(.vertical, 10)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Your personal risk score is \(Int(viewModel.assessment.normalizedScore)) out of 100, which is \(viewModel.assessment.riskLevel.rawValue)")
+                        
+                        // Raw Allergen Data Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Current Pollen Levels")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 15) {
+                                    ForEach(viewModel.currentScenario.environment.measurements) { measurement in
+                                        AllergenLevelCard(measurement: measurement)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
                         
                         // Weather Indicators
                         HStack(spacing: 20) {
@@ -190,6 +206,31 @@ struct MainView: View {
         case .thunderstorm: return "Storm"
         case .snowy: return "Snowy"
         }
+    }
+}
+
+struct AllergenLevelCard: View {
+    let measurement: PollenMeasurement
+    
+    var body: some View {
+        VStack(spacing: 10) {
+            AllergenDiagram(type: measurement.type)
+                .scaleEffect(0.4)
+                .frame(width: 30, height: 30)
+            
+            VStack(spacing: 2) {
+                Text(measurement.type.rawValue)
+                    .font(.caption2.bold())
+                    .foregroundColor(.secondary)
+                Text("\(Int(measurement.count))")
+                    .font(.system(.subheadline, design: .rounded))
+                    .fontWeight(.bold)
+            }
+        }
+        .frame(width: 85, height: 100)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
 }
 

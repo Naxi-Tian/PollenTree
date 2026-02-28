@@ -17,7 +17,7 @@ struct OnboardingWelcomeView: View {
             .accessibilityHidden(true)
             
             VStack(spacing: 16) {
-                Text("Welcome to PollenTree")
+                Text("Welcome to Run, Pollen")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                 
@@ -51,6 +51,7 @@ struct OnboardingWelcomeView: View {
 
 struct VisualAllergenSelectionView: View {
     @State private var selectedAllergens: Set<PollenType> = []
+    @State private var isNotSure = false
     
     let columns = [
         GridItem(.flexible(), spacing: 20),
@@ -70,24 +71,60 @@ struct VisualAllergenSelectionView: View {
             .accessibilityElement(children: .combine)
             
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(PollenType.allCases) { type in
-                        AllergenDiagramCard(type: type, isSelected: selectedAllergens.contains(type)) {
-                            if selectedAllergens.contains(type) {
-                                selectedAllergens.remove(type)
+                VStack(spacing: 20) {
+                    LazyVGrid(columns: columns, spacing: 20) {
+                        ForEach(PollenType.allCases) { type in
+                            AllergenDiagramCard(type: type, isSelected: selectedAllergens.contains(type)) {
+                                if isNotSure { isNotSure = false }
+                                if selectedAllergens.contains(type) {
+                                    selectedAllergens.remove(type)
+                                } else {
+                                    selectedAllergens.insert(type)
+                                }
+                            }
+                            .accessibilityLabel("\(type.rawValue), \(selectedAllergens.contains(type) ? "Selected" : "Not selected")")
+                            .accessibilityHint("Double tap to toggle selection")
+                        }
+                    }
+                    
+                    Divider().padding(.vertical, 10)
+                    
+                    Button {
+                        withAnimation {
+                            isNotSure.toggle()
+                            if isNotSure {
+                                selectedAllergens = Set(PollenType.allCases)
                             } else {
-                                selectedAllergens.insert(type)
+                                selectedAllergens = []
                             }
                         }
-                        .accessibilityLabel("\(type.rawValue), \(selectedAllergens.contains(type) ? "Selected" : "Not selected")")
-                        .accessibilityHint("Double tap to toggle selection")
+                    } label: {
+                        HStack {
+                            Image(systemName: isNotSure ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(isNotSure ? .green : .secondary)
+                            Text("I'm not sure")
+                                .font(.headline)
+                                .foregroundColor(isNotSure ? .green : .primary)
+                            Spacer()
+                            Image(systemName: "questionmark.circle")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(isNotSure ? Color.green.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(isNotSure ? Color.green : Color.clear, lineWidth: 2)
+                        )
                     }
+                    .padding(.horizontal, 20)
+                    .accessibilityLabel("I'm not sure option. Selecting this will enable learning mode for all allergens.")
                 }
-                .padding(20)
+                .padding(.bottom, 20)
             }
             
             NavigationLink {
-                VisualSeveritySetupView(selectedAllergens: selectedAllergens)
+                VisualSeveritySetupView(selectedAllergens: selectedAllergens, isLearningMode: isNotSure)
             } label: {
                 Text("Continue")
                     .font(.headline)
@@ -147,17 +184,23 @@ struct AllergenDiagram: View {
                 Triangle().fill(Color.green.opacity(0.6)).frame(width: 40, height: 50)
             }
         case .birch:
-            VStack(spacing: 2) {
-                Capsule().fill(Color.gray.opacity(0.2)).frame(width: 8, height: 40)
-                HStack(spacing: 10) {
-                    Circle().fill(Color.green.opacity(0.4)).frame(width: 20, height: 20)
-                    Circle().fill(Color.green.opacity(0.4)).frame(width: 20, height: 20)
+            ZStack {
+                Capsule().fill(Color.gray.opacity(0.3)).frame(width: 6, height: 60)
+                VStack(spacing: 12) {
+                    HStack(spacing: 15) {
+                        Circle().fill(Color.green.opacity(0.5)).frame(width: 18, height: 18)
+                        Circle().fill(Color.green.opacity(0.5)).frame(width: 18, height: 18)
+                    }
+                    HStack(spacing: 15) {
+                        Circle().fill(Color.green.opacity(0.5)).frame(width: 18, height: 18)
+                        Circle().fill(Color.green.opacity(0.5)).frame(width: 18, height: 18)
+                    }
                 }
             }
         case .oak:
             ZStack {
-                Image(systemName: "leaf.fill").font(.system(size: 40)).foregroundColor(.green.opacity(0.7))
-                Circle().fill(Color.brown.opacity(0.6)).frame(width: 15, height: 15).offset(y: 15)
+                Image(systemName: "leaf.fill").font(.system(size: 45)).foregroundColor(.green.opacity(0.7))
+                Circle().fill(Color.brown.opacity(0.8)).frame(width: 18, height: 18).offset(y: 18)
             }
         case .grass:
             HStack(alignment: .bottom, spacing: 4) {
@@ -165,15 +208,32 @@ struct AllergenDiagram: View {
                 Capsule().fill(Color.green.opacity(0.8)).frame(width: 4, height: 50)
                 Capsule().fill(Color.green.opacity(0.5)).frame(width: 4, height: 35)
             }
-        case .ragweed, .mugwort, .pigweed:
-            ZStack {
-                ForEach(0..<5) { i in
-                    Capsule()
-                        .fill(Color.yellow.opacity(0.6))
-                        .frame(width: 6, height: 30)
-                        .rotationEffect(.degrees(Double(i) * 72))
+        case .ragweed:
+            VStack(spacing: 2) {
+                ForEach(0..<3) { _ in
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.yellow.opacity(0.8)).frame(width: 8, height: 8)
+                        Circle().fill(Color.yellow.opacity(0.8)).frame(width: 8, height: 8)
+                    }
                 }
-                Circle().fill(Color.orange.opacity(0.8)).frame(width: 12, height: 12)
+                Capsule().fill(Color.green.opacity(0.4)).frame(width: 4, height: 20)
+            }
+        case .mugwort:
+            ZStack {
+                ForEach(0..<6) { i in
+                    Capsule()
+                        .fill(Color.green.opacity(0.5))
+                        .frame(width: 4, height: 35)
+                        .rotationEffect(.degrees(Double(i) * 30))
+                }
+                Circle().fill(Color.gray.opacity(0.3)).frame(width: 10, height: 10)
+            }
+        case .pigweed:
+            VStack(spacing: -5) {
+                Circle().fill(Color.red.opacity(0.4)).frame(width: 15, height: 15)
+                Circle().fill(Color.red.opacity(0.4)).frame(width: 20, height: 20)
+                Circle().fill(Color.red.opacity(0.4)).frame(width: 25, height: 25)
+                Capsule().fill(Color.green.opacity(0.3)).frame(width: 4, height: 15)
             }
         case .otherTree:
             Image(systemName: "tree.fill").font(.system(size: 45)).foregroundColor(.green.opacity(0.5))
@@ -194,51 +254,69 @@ struct Triangle: Shape {
 
 struct VisualSeveritySetupView: View {
     let selectedAllergens: Set<PollenType>
+    let isLearningMode: Bool
     @State private var severityMapping: [PollenType: Severity] = [:]
     @AppStorage("hasCompletedSetup") var hasCompletedSetup: Bool = false
     
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 8) {
-                Text("How sensitive are you?")
+                Text(isLearningMode ? "Learning Mode Enabled" : "How sensitive are you?")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text("This helps us calibrate your risk score.")
+                Text(isLearningMode ? "We'll start with equal sensitivity and learn from your logs." : "This helps us calibrate your risk score.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
             }
             .padding(.top, 20)
             .accessibilityElement(children: .combine)
             
-            List {
-                ForEach(Array(selectedAllergens).sorted(by: { $0.rawValue < $1.rawValue })) { type in
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            AllergenDiagram(type: type).scaleEffect(0.5).frame(width: 30, height: 30)
-                            Text(type.rawValue).font(.headline)
-                        }
-                        .accessibilityHidden(true)
-                        
-                        Picker("Severity for \(type.rawValue)", selection: Binding(
-                            get: { severityMapping[type] ?? .moderate },
-                            set: { severityMapping[type] = $0 }
-                        )) {
-                            ForEach(Severity.allCases) { severity in
-                                Text(severity.rawValue).tag(severity)
+            if !isLearningMode {
+                List {
+                    ForEach(Array(selectedAllergens).sorted(by: { $0.rawValue < $1.rawValue })) { type in
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                AllergenDiagram(type: type).scaleEffect(0.5).frame(width: 30, height: 30)
+                                Text(type.rawValue).font(.headline)
                             }
+                            .accessibilityHidden(true)
+                            
+                            Picker("Severity for \(type.rawValue)", selection: Binding(
+                                get: { severityMapping[type] ?? .moderate },
+                                set: { severityMapping[type] = $0 }
+                            )) {
+                                ForEach(Severity.allCases) { severity in
+                                    Text(severity.label).tag(severity)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .accessibilityLabel("Severity for \(type.rawValue)")
                         }
-                        .pickerStyle(.segmented)
-                        .accessibilityLabel("Severity for \(type.rawValue)")
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
                 }
+                .listStyle(PlainListStyle())
+            } else {
+                Spacer()
+                VStack(spacing: 20) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 80))
+                        .foregroundColor(.green)
+                    Text("Run, Pollen will analyze your symptom logs against real-time pollen data to identify your triggers automatically.")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+                Spacer()
             }
-            .listStyle(PlainListStyle())
             
             Button {
                 let profile = AllergyProfile(
                     allergyTypes: selectedAllergens,
                     severityMapping: severityMapping,
-                    hasTestedBefore: .notSure
+                    hasTestedBefore: isLearningMode ? .notSure : .notSure
                 )
                 profile.save()
                 withAnimation {
@@ -259,7 +337,7 @@ struct VisualSeveritySetupView: View {
         }
         .onAppear {
             for type in selectedAllergens {
-                severityMapping[type] = .moderate
+                severityMapping[type] = isLearningMode ? .moderate : .moderate
             }
         }
     }

@@ -254,6 +254,8 @@ struct PollenTreeView: View {
 struct CypressLaunchView: View {
     @State private var isAnimating = false
     @State private var textOpacity = 0.0
+    @State private var taglineScale = 0.8
+    @State private var taglineOpacity = 0.0
     
     var body: some View {
         ZStack {
@@ -278,20 +280,28 @@ struct CypressLaunchView: View {
                 }
                 .frame(height: 250)
                 
-                VStack(spacing: 15) {
-                    Text("PollenTree")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                    Text("Your Personal Allergy Forecast")
-                        .font(.title2)
+                VStack(spacing: 20) {
+                    Text("Run, Pollen")
+                        .font(.system(size: 52, weight: .bold, design: .rounded))
+                        .opacity(textOpacity)
+                        .offset(y: isAnimating ? 0 : 20)
+                    
+                    Text("Your Personal Pollen Allergy Forecast")
+                        .font(.system(size: 26, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
+                        .scaleEffect(taglineScale)
+                        .opacity(taglineOpacity)
                 }
-                .opacity(textOpacity)
             }
         }
         .onAppear {
             isAnimating = true
-            withAnimation(.easeIn(duration: 2.0).delay(1.2)) {
+            withAnimation(.easeOut(duration: 1.2).delay(1.0)) {
                 textOpacity = 1.0
+            }
+            withAnimation(.easeOut(duration: 1.5).delay(1.8)) {
+                taglineOpacity = 1.0
+                taglineScale = 1.0
             }
         }
     }

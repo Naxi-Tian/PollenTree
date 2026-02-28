@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @MainActor
 class DashboardViewModel: ObservableObject {
@@ -10,6 +11,8 @@ class DashboardViewModel: ObservableObject {
     @Published private(set) var dominantAllergen: PollenType? = nil
     @Published private(set) var isThunderstormAsthmaRisk: Bool = false
     @Published private(set) var recommendations: [String] = []
+    
+    private var marchScenarios: [Scenario] = []
     
     struct Assessment {
         let normalizedScore: Double
@@ -29,8 +32,12 @@ class DashboardViewModel: ObservableObject {
         )
     }
     
-    init(initialScenario: Scenario = MockDataService.beijingMidMarchWeek[0]) {
-        self.currentScenario = initialScenario
+    init() {
+        self.marchScenarios = MockDataService.generateMarchMockData()
+        // Default to today's date in March if possible, otherwise first day
+        let day = Calendar.current.component(.day, from: Date())
+        let index = (day >= 1 && day <= 31) ? day - 1 : 0
+        self.currentScenario = marchScenarios[index]
         self.profile = AllergyProfile.load()
         orchestrateCalculations()
     }
@@ -45,7 +52,6 @@ class DashboardViewModel: ObservableObject {
             self.dominantAllergen = assessmentResult.dominantAllergen
             self.isThunderstormAsthmaRisk = assessmentResult.isThunderstormAsthmaRisk
             
-            // Map RecommendationSet to [String]
             var adviceList: [String] = []
             adviceList.append(recs.outdoorAdvice)
             if recs.requiresMask {
@@ -64,5 +70,41 @@ class DashboardViewModel: ObservableObject {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
         generator.impactOccurred()
+    }
+    
+    // Learning logic: Adjust profile based on symptom logs
+    func learnFromLogs(_ logs: [SymptomLog]) {
+        guard profile.hasTestedBefore == .notSure else { return }
+        
+        var allergenImpact: [PollenType: Double] = [:]
+        
+        for log in logs {
+            let totalSeverity = Double(log.sneezing + log.itchyEyes + log.congestion)
+            if totalSeverity > 0 {
+                // Find which allergens were high on this day
+                // In a real app, we'd fetch historical data. Here we use the log's captured data.
+                if let dominant = log.historicalDominantAllergen {
+                    allergenImpact[dominant, default: 0] += totalSeverity
+                }
+            }
+        }
+        
+        // Update severity mapping based on impact
+        var updatedMapping = profile.severityMapping
+        for (type, impact) in allergenImpact {
+            if impact > 15 {
+                updatedMapping[type] = .severe
+            } else if impact > 5 {
+                updatedMapping[type] = .moderate
+            } else {
+                updatedMapping[type] = .mild
+            }
+        }
+        
+        if updatedMapping != profile.severityMapping {
+            profile.severityMapping = updatedMapping
+            profile.save()
+            orchestrateCalculations()
+        }
     }
 }

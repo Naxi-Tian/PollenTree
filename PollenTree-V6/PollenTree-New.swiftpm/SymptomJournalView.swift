@@ -34,7 +34,6 @@ struct SymptomJournalView: View {
                             
                             Chart {
                                 ForEach(logs.sorted(by: { $0.date < $1.date })) { log in
-                                    // Fix 1: Type Mismatch Fix (Double for both)
                                     let totalSeverity = Double(log.sneezing + log.itchyEyes + log.congestion)
                                     
                                     // Symptom Severity Line
@@ -45,18 +44,17 @@ struct SymptomJournalView: View {
                                     .foregroundStyle(by: .value("Type", "Symptoms"))
                                     .symbol(by: .value("Type", "Symptoms"))
                                     
-                                    // Historical Pollen Risk Area (if available)
+                                    // Historical Pollen Risk Area
                                     if let risk = log.historicalRiskScore {
                                         AreaMark(
                                             x: .value("Date", log.date),
-                                            y: .value("Pollen Risk", risk / 10.0) // Scale to match symptom range (0-9)
+                                            y: .value("Pollen Risk", risk / 10.0)
                                         )
                                         .foregroundStyle(by: .value("Type", "Pollen Risk"))
                                         .opacity(0.2)
                                     }
                                 }
                             }
-                            // Fix 2: Strict frame height to prevent infinite layout crash
                             .frame(height: 200)
                             .padding()
                             .background(Color(UIColor.secondarySystemGroupedBackground))
@@ -134,7 +132,6 @@ struct SymptomJournalView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("No logs yet. Your history will appear here.")
                         } else {
-                            // Fix 3: Remove .onDelete and add contextMenu for deletion
                             ForEach(logs) { log in
                                 SymptomLogCard(log: log) {
                                     selectedLog = log
@@ -147,8 +144,6 @@ struct SymptomJournalView: View {
                                         Label("Delete Log", systemImage: "trash")
                                     }
                                 }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Log for \(log.date.formatted(date: .abbreviated, time: .omitted)). Symptoms: Sneezing \(log.sneezingSeverity.label), Itchy Eyes \(log.itchyEyesSeverity.label), Congestion \(log.congestionSeverity.label).")
                             }
                         }
                     }
@@ -238,6 +233,7 @@ struct SymptomIcon: View {
 struct LogSymptomView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
+    @Query private var logs: [SymptomLog]
     
     @State private var date = Date()
     @State private var sneezing: SymptomSeverity = .none
@@ -245,15 +241,14 @@ struct LogSymptomView: View {
     @State private var congestion: SymptomSeverity = .none
     @State private var notes = ""
     
-    // In a real app, we'd use a shared ViewModel, but for simplicity in this view:
-    @State private var currentRisk: Double = 45.0
-    @State private var currentDominant: PollenType = .birch
+    // Using a temporary ViewModel to get current risk data
+    @StateObject private var viewModel = DashboardViewModel()
     
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("When & How")) {
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                Section(header: Text("Date")) {
+                    DatePicker("Log Date", selection: $date, displayedComponents: .date)
                 }
                 
                 Section(header: Text("Symptoms")) {
@@ -274,20 +269,22 @@ struct LogSymptomView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        // Capture the risk data at the time of logging
                         let newLog = SymptomLog(
                             date: date,
                             sneezing: sneezing,
                             itchyEyes: itchyEyes,
                             congestion: congestion,
                             notes: notes,
-                            historicalRiskScore: currentRisk,
-                            historicalDominantAllergen: currentDominant
+                            historicalRiskScore: viewModel.assessment.normalizedScore,
+                            historicalDominantAllergen: viewModel.assessment.dominantAllergen
                         )
                         modelContext.insert(newLog)
+                        
+                        // Trigger learning logic
+                        viewModel.learnFromLogs(logs + [newLog])
+                        
                         dismiss()
                     }
-                    .fontWeight(.bold)
                 }
             }
         }
@@ -320,15 +317,40 @@ struct LogDetailView: View {
         NavigationStack {
             List {
                 Section(header: Text("Summary")) {
-                    LabeledContent("Date", value: log.date.formatted(date: .long, time: .omitted))
-                    LabeledContent("Sneezing", value: log.sneezingSeverity.label)
-                    LabeledContent("Itchy Eyes", value: log.itchyEyesSeverity.label)
-                    LabeledContent("Congestion", value: log.congestionSeverity.label)
+                    HStack {
+                        Text("Date")
+                        Spacer()
+                        Text(log.date.formatted(date: .long, time: .omitted))
+                            .foregroundColor(.secondary)
+                    }
+                    if let dominant = log.historicalDominantAllergen {
+                        HStack {
+                            Text("Dominant Allergen")
+                            Spacer()
+                            Text(dominant.rawValue)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    if let risk = log.historicalRiskScore {
+                        HStack {
+                            Text("Pollen Risk Level")
+                            Spacer()
+                            Text("\(Int(risk))/100")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Symptoms")) {
+                    SymptomDetailRow(title: "Sneezing", severity: log.sneezingSeverity)
+                    SymptomDetailRow(title: "Itchy Eyes", severity: log.itchyEyesSeverity)
+                    SymptomDetailRow(title: "Congestion", severity: log.congestionSeverity)
                 }
                 
                 if !log.notes.isEmpty {
                     Section(header: Text("Notes")) {
                         Text(log.notes)
+                            .font(.body)
                     }
                 }
             }
@@ -338,6 +360,21 @@ struct LogDetailView: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+struct SymptomDetailRow: View {
+    let title: String
+    let severity: SymptomSeverity
+    
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(severity.label)
+                .foregroundColor(severity.color)
+                .fontWeight(.bold)
         }
     }
 }

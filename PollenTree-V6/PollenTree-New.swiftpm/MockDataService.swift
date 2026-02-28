@@ -28,6 +28,65 @@ struct MockDataService {
         Scenario(name: "Sun", environment: EnvironmentalData(measurements: createMeasurements(cedar: 450, birch: 350, oak: 150, other: 110, grass: 45, ragweed: 2, mugwort: 5, pigweed: 2), humidity: 85, windSpeed: 18, isThunderstorm: true, weatherVisual: .thunderstorm))
     ]
     
+    // Generate a full month of mock data for March
+    static func generateMarchMockData() -> [Scenario] {
+        var marchData: [Scenario] = []
+        let calendar = Calendar.current
+        let year = 2026
+        let month = 3
+        
+        for day in 1...31 {
+            var components = DateComponents()
+            components.year = year
+            components.month = month
+            components.day = day
+            guard let date = calendar.date(from: components) else { continue }
+            
+            let weekday = calendar.component(.weekday, from: date)
+            let dayName = calendar.shortWeekdaySymbols[weekday - 1]
+            
+            // Create varying pollen levels throughout the month
+            // Early March: High Cedar, Low Birch
+            // Late March: Lower Cedar, High Birch
+            let progress = Double(day) / 31.0
+            let cedarBase = 800.0 * (1.0 - progress * 0.5)
+            let birchBase = 600.0 * progress
+            let oakBase = 200.0 * progress
+            
+            // Add some randomness
+            let randomFactor = Double.random(in: 0.7...1.3)
+            let isRainy = Double.random(in: 0...1) < 0.2
+            let isWindy = !isRainy && Double.random(in: 0...1) < 0.3
+            
+            let measurements = createMeasurements(
+                cedar: isRainy ? cedarBase * 0.1 : cedarBase * randomFactor,
+                birch: isRainy ? birchBase * 0.1 : birchBase * randomFactor,
+                oak: isRainy ? oakBase * 0.1 : oakBase * randomFactor,
+                other: 100 * randomFactor,
+                grass: 20 * progress * randomFactor,
+                ragweed: 0,
+                mugwort: 0,
+                pigweed: 0
+            )
+            
+            let weather: WeatherType = isRainy ? .rainy : (isWindy ? .windy : .clear)
+            let humidity = isRainy ? Double.random(in: 70...90) : Double.random(in: 20...50)
+            let wind = isWindy ? Double.random(in: 15...25) : Double.random(in: 5...12)
+            
+            marchData.append(Scenario(
+                name: "\(dayName) \(day)",
+                environment: EnvironmentalData(
+                    measurements: measurements,
+                    humidity: humidity,
+                    windSpeed: wind,
+                    isThunderstorm: isRainy && Double.random(in: 0...1) < 0.3,
+                    weatherVisual: weather
+                )
+            ))
+        }
+        return marchData
+    }
+    
     // Expanded China-wide Regional Mock Data
     static let regionalPollenData: [RegionalPollenData] = [
         // North China

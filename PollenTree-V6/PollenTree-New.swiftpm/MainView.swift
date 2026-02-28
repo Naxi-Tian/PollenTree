@@ -429,7 +429,7 @@ struct ProfileManagementView: View {
                             Text(status.rawValue).tag(status)
                         }
                     }
-                    .onChange(of: profile.hasTestedBefore) { _ in
+                    .onChange(of: profile.hasTestedBefore) {
                         profile.save()
                     }
                 }

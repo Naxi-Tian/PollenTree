@@ -5,45 +5,52 @@ struct PollenMapView: View {
     @StateObject private var viewModel = MapViewModel()
     let profile: AllergyProfile
     
-    // Initial region for China
-    @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 35.0, longitude: 105.0),
-        span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 30.0)
+    // Initial position for China
+    @State private var position: MapCameraPosition = .camera(
+        MapCamera(
+            centerCoordinate: CLLocationCoordinate2D(latitude: 35.0, longitude: 105.0),
+            distance: 5000000,
+            heading: 0,
+            pitch: 0
+        )
     )
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            Map(coordinateRegion: $mapRegion, annotationItems: viewModel.regions) { region in
-                MapAnnotation(coordinate: region.coordinate) {
-                    let assessment = viewModel.getAssessment(for: region, profile: profile)
-                    let color = viewModel.color(for: assessment.riskLevel)
-                    
-                    VStack(spacing: 4) {
-                        ZStack {
-                            Circle()
-                                .fill(color.opacity(0.3))
-                                .frame(width: 44, height: 44)
-                            
-                            Circle()
-                                .fill(color)
-                                .frame(width: 24, height: 24)
-                                .overlay(
-                                    Circle().stroke(Color.white, lineWidth: 2)
-                                )
-                            
-                            if region.environment.isThunderstorm {
-                                Image(systemName: "bolt.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.white)
+            Map(position: $position) {
+                ForEach(viewModel.regions) { region in
+                    Annotation(region.name, coordinate: region.coordinate) {
+                        let assessment = viewModel.getAssessment(for: region, profile: profile)
+                        let color = viewModel.color(for: assessment.riskLevel)
+                        
+                        VStack(spacing: 4) {
+                            ZStack {
+                                Circle()
+                                    .fill(color.opacity(0.3))
+                                    .frame(width: 44, height: 44)
+                                
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Circle().stroke(Color.white, lineWidth: 2)
+                                    )
+                                
+                                if region.environment.isThunderstorm {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.white)
+                                }
                             }
-                        }
-                        .scaleEffect(assessment.riskLevel == .severe ? 1.2 : 1.0)
-                        .onTapGesture {
-                            viewModel.selectedRegion = region
+                            .scaleEffect(assessment.riskLevel == .severe ? 1.2 : 1.0)
+                            .onTapGesture {
+                                viewModel.selectedRegion = region
+                            }
                         }
                     }
                 }
             }
+            .mapStyle(.standard(elevation: .flat))
             .ignoresSafeArea(edges: .top)
             
             // Legend

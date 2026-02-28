@@ -60,86 +60,107 @@ struct VisualAllergenSelectionView: View {
     
     var body: some View {
         VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text("What triggers you?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text("Select the allergens you are sensitive to.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.top, 20)
-            .accessibilityElement(children: .combine)
+            headerSection
             
             ScrollView {
                 VStack(spacing: 20) {
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(PollenType.allCases) { type in
-                            AllergenDiagramCard(type: type, isSelected: selectedAllergens.contains(type)) {
-                                if isNotSure { isNotSure = false }
-                                if selectedAllergens.contains(type) {
-                                    selectedAllergens.remove(type)
-                                } else {
-                                    selectedAllergens.insert(type)
-                                }
-                            }
-                            .accessibilityLabel("\(type.rawValue), \(selectedAllergens.contains(type) ? "Selected" : "Not selected")")
-                            .accessibilityHint("Double tap to toggle selection")
-                        }
-                    }
+                    allergenGrid
                     
                     Divider().padding(.vertical, 10)
                     
-                    Button {
-                        withAnimation {
-                            isNotSure.toggle()
-                            if isNotSure {
-                                selectedAllergens = Set(PollenType.allCases)
-                            } else {
-                                selectedAllergens = []
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: isNotSure ? "checkmark.circle.fill" : "circle")
-                                .foregroundColor(isNotSure ? .green : .secondary)
-                            Text("I'm not sure")
-                                .font(.headline)
-                                .foregroundColor(isNotSure ? .green : .primary)
-                            Spacer()
-                            Image(systemName: "questionmark.circle")
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                        .background(isNotSure ? Color.green.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(isNotSure ? Color.green : Color.clear, lineWidth: 2)
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    .accessibilityLabel("I'm not sure option. Selecting this will enable learning mode for all allergens.")
+                    notSureButton
                 }
                 .padding(.bottom, 20)
             }
             
-            NavigationLink {
-                VisualSeveritySetupView(selectedAllergens: selectedAllergens, isLearningMode: isNotSure)
-            } label: {
-                Text("Continue")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(selectedAllergens.isEmpty ? Color.gray : Color.green)
-                    .cornerRadius(16)
-            }
-            .disabled(selectedAllergens.isEmpty)
-            .padding(.horizontal, 40)
-            .padding(.bottom, 40)
-            .accessibilityLabel("Continue to severity setup")
+            continueButton
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            Text("What triggers you?")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+            Text("Select the allergens you are sensitive to.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding(.top, 20)
+        .accessibilityElement(children: .combine)
+    }
+    
+    private var allergenGrid: some View {
+        LazyVGrid(columns: columns, spacing: 20) {
+            ForEach(PollenType.allCases) { type in
+                AllergenDiagramCard(type: type, isSelected: selectedAllergens.contains(type)) {
+                    toggleSelection(for: type)
+                }
+                .accessibilityLabel("\(type.rawValue), \(selectedAllergens.contains(type) ? "Selected" : "Not selected")")
+                .accessibilityHint("Double tap to toggle selection")
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+    
+    private var notSureButton: some View {
+        Button {
+            withAnimation {
+                isNotSure.toggle()
+                if isNotSure {
+                    selectedAllergens = Set(PollenType.allCases)
+                } else {
+                    selectedAllergens = []
+                }
+            }
+        } label: {
+            HStack {
+                Image(systemName: isNotSure ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isNotSure ? .green : .secondary)
+                Text("I'm not sure")
+                    .font(.headline)
+                    .foregroundColor(isNotSure ? .green : .primary)
+                Spacer()
+                Image(systemName: "questionmark.circle")
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(isNotSure ? Color.green.opacity(0.1) : Color(UIColor.secondarySystemGroupedBackground))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isNotSure ? Color.green : Color.clear, lineWidth: 2)
+            )
+        }
+        .padding(.horizontal, 20)
+        .accessibilityLabel("I'm not sure option. Selecting this will enable learning mode for all allergens.")
+    }
+    
+    private var continueButton: some View {
+        NavigationLink {
+            VisualSeveritySetupView(selectedAllergens: selectedAllergens, isLearningMode: isNotSure)
+        } label: {
+            Text("Continue")
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(selectedAllergens.isEmpty ? Color.gray : Color.green)
+                .cornerRadius(16)
+        }
+        .disabled(selectedAllergens.isEmpty)
+        .padding(.horizontal, 40)
+        .padding(.bottom, 40)
+        .accessibilityLabel("Continue to severity setup")
+    }
+    
+    private func toggleSelection(for type: PollenType) {
+        if isNotSure { isNotSure = false }
+        if selectedAllergens.contains(type) {
+            selectedAllergens.remove(type)
+        } else {
+            selectedAllergens.insert(type)
+        }
     }
 }
 
@@ -316,7 +337,7 @@ struct VisualSeveritySetupView: View {
                 let profile = AllergyProfile(
                     allergyTypes: selectedAllergens,
                     severityMapping: severityMapping,
-                    hasTestedBefore: isLearningMode ? .notSure : .notSure
+                    hasTestedBefore: .notSure
                 )
                 profile.save()
                 withAnimation {
@@ -337,7 +358,7 @@ struct VisualSeveritySetupView: View {
         }
         .onAppear {
             for type in selectedAllergens {
-                severityMapping[type] = isLearningMode ? .moderate : .moderate
+                severityMapping[type] = .moderate
             }
         }
     }

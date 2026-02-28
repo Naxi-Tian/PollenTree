@@ -278,13 +278,27 @@ struct VisualSeveritySetupView: View {
     let isLearningMode: Bool
     @State private var severityMapping: [PollenType: Severity] = [:]
     @AppStorage("hasCompletedSetup") var hasCompletedSetup: Bool = false
+
+    private var titleText: String {
+        isLearningMode ? "Learning Mode Enabled" : "How sensitive are you?"
+    }
+
+    private var subtitleText: String {
+        isLearningMode
+            ? "We'll start with equal sensitivity and learn from your logs."
+            : "This helps us calibrate your risk score."
+    }
+
+    private var sortedAllergens: [PollenType] {
+        Array(selectedAllergens).sorted(by: { $0.rawValue < $1.rawValue })
+    }
     
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 8) {
-                Text(isLearningMode ? "Learning Mode Enabled" : "How sensitive are you?")
+                Text(titleText)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text(isLearningMode ? "We'll start with equal sensitivity and learn from your logs." : "This helps us calibrate your risk score.")
+                Text(subtitleText)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -295,26 +309,8 @@ struct VisualSeveritySetupView: View {
             
             if !isLearningMode {
                 List {
-                    ForEach(Array(selectedAllergens).sorted(by: { $0.rawValue < $1.rawValue })) { type in
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                AllergenDiagram(type: type).scaleEffect(0.5).frame(width: 30, height: 30)
-                                Text(type.rawValue).font(.headline)
-                            }
-                            .accessibilityHidden(true)
-                            
-                            Picker("Severity for \(type.rawValue)", selection: Binding(
-                                get: { severityMapping[type] ?? .moderate },
-                                set: { severityMapping[type] = $0 }
-                            )) {
-                                ForEach(Severity.allCases) { severity in
-                                    Text(severity.label).tag(severity)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .accessibilityLabel("Severity for \(type.rawValue)")
-                        }
-                        .padding(.vertical, 8)
+                    ForEach(sortedAllergens) { type in
+                        allergenSeverityRow(for: type)
                     }
                 }
                 .listStyle(PlainListStyle())
@@ -361,6 +357,35 @@ struct VisualSeveritySetupView: View {
                 severityMapping[type] = .moderate
             }
         }
+    }
+
+    @ViewBuilder
+    private func allergenSeverityRow(for type: PollenType) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                AllergenDiagram(type: type)
+                    .scaleEffect(0.5)
+                    .frame(width: 30, height: 30)
+                Text(type.rawValue)
+                    .font(.headline)
+            }
+            .accessibilityHidden(true)
+
+            Picker(
+                "Severity for \(type.rawValue)",
+                selection: Binding(
+                    get: { severityMapping[type] ?? .moderate },
+                    set: { severityMapping[type] = $0 }
+                )
+            ) {
+                ForEach(Severity.allCases) { severity in
+                    Text(severity.label).tag(severity)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Severity for \(type.rawValue)")
+        }
+        .padding(.vertical, 8)
     }
 }
 

@@ -183,16 +183,7 @@ struct RegionDetailView: View {
     }
 }
 
-extension RiskLevel {
-    var color: Color {
-        switch self {
-        case .low: return .green
-        case .moderate: return .yellow
-        case .high: return .orange
-        case .severe: return .red
-        }
-    }
-}
+
 
 struct WeatherStatMini: View {
     let icon: String

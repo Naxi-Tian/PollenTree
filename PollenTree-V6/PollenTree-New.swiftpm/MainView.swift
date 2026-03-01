@@ -47,7 +47,7 @@ struct MainView: View {
             SymptomJournalView(viewModel: viewModel)
                 .tabItem { Label("Journal", systemImage: "doc.text.fill") }
         }
-        .accentColor(.blue)
+        .accentColor(Color.blue)
     }
 }
 
@@ -69,7 +69,7 @@ struct DashboardHeader: View {
                     Image(systemName: "location.fill").font(Font.caption)
                     Text("Beijing, China").font(Font.subheadline.bold())
                 }
-                .foregroundColor(.secondary)
+                .foregroundColor(Color.secondary)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Current location: Beijing, China")
             }
@@ -95,7 +95,7 @@ struct HeaderButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(Font.title2)
-                .foregroundColor(.primary)
+                .foregroundColor(Color.primary)
         }
         .accessibilityLabel(label)
     }
@@ -108,7 +108,7 @@ struct RiskScoreDisplay: View {
         VStack(spacing: 12) {
             Text("Personal Risk Score")
                 .font(Font.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(Color.secondary)
                 .tracking(1.2)
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -229,7 +229,7 @@ struct AllergenLevelCard: View {
             VStack(spacing: 2) {
                 Text(measurement.type.rawValue)
                     .font(Font.caption2.bold())
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color.secondary)
                 Text("\(Int(measurement.count))")
                     .font(Font.system(.subheadline, design: .rounded))
                     .fontWeight(.bold)
@@ -253,7 +253,7 @@ struct WeatherStatView: View {
         VStack(spacing: 12) {
             Image(systemName: icon)
                 .font(Font.title2)
-                .foregroundColor(.blue)
+                .foregroundColor(Color.blue)
             
             VStack(spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -261,12 +261,12 @@ struct WeatherStatView: View {
                         .font(Font.system(isTextValue ? .headline : .title3, design: .rounded))
                         .fontWeight(.bold)
                     if !unit.isEmpty {
-                        Text(unit).font(Font.caption2).foregroundColor(.secondary)
+                        Text(unit).font(Font.caption2).foregroundColor(Color.secondary)
                     }
                 }
                 Text(label)
                     .font(Font.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color.secondary)
                     .textCase(.uppercase)
                     .tracking(1.0)
             }
@@ -295,7 +295,7 @@ struct RecommendationRow: View {
             
             Text(text)
                 .font(Font.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(Color.primary)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
             
@@ -318,28 +318,28 @@ struct ScienceInfoView: View {
                     ScienceCard(
                         title: "Biological Modeling",
                         icon: "chart.bar.doc.horizontal",
-                        color: .blue,
+                        color: Color.blue,
                         description: "Our engine uses a non-linear mathematical model to simulate how pollen particles interact with your specific sensitivity levels."
                     )
                     
                     ScienceCard(
                         title: "Species Sensitivity",
                         icon: "leaf.fill",
-                        color: .green,
+                        color: Color.green,
                         description: "Different plants have different potency. We weight allergens like Ragweed and Birch higher due to their aggressive biological impact."
                     )
                     
                     ScienceCard(
                         title: "Atmospheric Physics",
                         icon: "wind",
-                        color: .teal,
+                        color: Color.teal,
                         description: "Wind speed and humidity are factored in real-time. High wind disperses pollen, while high humidity can cause particles to burst."
                     )
                     
                     ScienceCard(
                         title: "Thunderstorm Asthma",
                         icon: "cloud.bolt.rain.fill",
-                        color: .purple,
+                        color: Color.purple,
                         description: "A rare but dangerous phenomenon where moisture causes pollen to shatter into tiny, deep-lung irritants. We monitor for these specific conditions."
                     )
                 }
@@ -379,7 +379,7 @@ struct ScienceCard: View {
             
             Text(description)
                 .font(Font.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(Color.secondary)
                 .lineSpacing(4)
         }
         .padding()
@@ -463,7 +463,7 @@ struct GeneralSettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0").foregroundColor(.secondary)
+                        Text("1.0.0").foregroundColor(Color.secondary)
                     }
                 }
             }

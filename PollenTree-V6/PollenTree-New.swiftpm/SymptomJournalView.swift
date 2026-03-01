@@ -15,6 +15,8 @@ struct SymptomJournalView: View {
     @State private var showingLogSheet = false
     @State private var selectedLog: SymptomLog?
     
+    @ObservedObject var viewModel: DashboardViewModel
+    
     // 2. Safely grouped data for the Bar Chart
     private var allergenChartData: [AllergenSeverityData] {
         var scores: [String: Int] = [:]
@@ -57,10 +59,10 @@ struct SymptomJournalView: View {
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingLogSheet) {
                 // The sheet is completely standalone now!
-                LogSymptomView()
+                LogSymptomView(viewModel: viewModel)
             }
             .sheet(item: $selectedLog) { log in
-                LogDetailView(log: log)
+                LogSymptomView(viewModel: viewModel, logToEdit: log)
             }
         }
     }
@@ -108,7 +110,6 @@ struct SymptomCorrelationChart: View {
             .background(Color(UIColor.secondarySystemGroupedBackground))
             .cornerRadius(20)
             .padding(.horizontal)
-            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Bar chart showing your total symptom severity categorized by pollen type.")
         }
     }
@@ -134,7 +135,6 @@ struct PersonalInsightsCard: View {
         .background(Color.orange.opacity(0.05))
         .cornerRadius(20)
         .padding(.horizontal)
-        .accessibilityElement(children: .combine)
         .accessibilityLabel("Personal Insights: Your symptoms are most severe when \(topAllergen) levels are high.")
     }
 }
@@ -178,6 +178,12 @@ struct RecentLogsSection: View {
                     SymptomLogCard(log: log) { selectedLog = log }
                         .padding(.horizontal)
                         .contextMenu {
+                            Button {
+                                selectedLog = log
+                            } label: {
+                                Label("Edit Log", systemImage: "pencil")
+                            }
+                            
                             Button(role: .destructive) {
                                 modelContext.delete(log)
                             } label: {
@@ -202,7 +208,6 @@ struct EmptyLogsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-        .accessibilityElement(children: .combine)
         .accessibilityLabel("No logs yet. Your history will appear here.")
     }
 }
@@ -256,6 +261,8 @@ struct LogSymptomView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     
+    var logToEdit: SymptomLog?
+    
     @State private var date = Date()
     @State private var sneezing: SymptomSeverity = .none
     @State private var itchyEyes: SymptomSeverity = .none
@@ -263,9 +270,20 @@ struct LogSymptomView: View {
     @State private var notes = ""
     @State private var saveErrorMessage: String?
     
-    // We use safe local mock variables so we don't need the ViewModel in this sheet
-    @State private var currentRisk: Double = 65.0
-    @State private var currentDominant: PollenType = .cedarCypress
+    @ObservedObject var viewModel: DashboardViewModel
+    
+    init(viewModel: DashboardViewModel, logToEdit: SymptomLog? = nil) {
+        self.viewModel = viewModel
+        self.logToEdit = logToEdit
+        
+        if let log = logToEdit {
+            _date = State(initialValue: log.date)
+            _sneezing = State(initialValue: log.sneezingSeverity)
+            _itchyEyes = State(initialValue: log.itchyEyesSeverity)
+            _congestion = State(initialValue: log.congestionSeverity)
+            _notes = State(initialValue: log.notes)
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -281,29 +299,62 @@ struct LogSymptomView: View {
                 Section(header: Text("Notes")) {
                     TextEditor(text: $notes).frame(height: 100)
                 }
+                
+                if logToEdit != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            if let log = logToEdit {
+                                modelContext.delete(log)
+                                dismiss()
+                            }
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text("Delete Entry")
+                                Spacer()
+                            }
+                        }
+                    }
+                }
             }
-            .navigationTitle("New Entry")
+            .navigationTitle(logToEdit == nil ? "New Entry" : "Edit Entry")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        let newLog = SymptomLog(
-                            date: date,
-                            sneezing: sneezing,
-                            itchyEyes: itchyEyes,
-                            congestion: congestion,
-                            notes: notes,
-                            historicalRiskScore: currentRisk,
-                            historicalDominantAllergen: currentDominant
-                        )
+                        if let log = logToEdit {
+                            log.date = date
+                            log.sneezing = sneezing.rawValue
+                            log.itchyEyes = itchyEyes.rawValue
+                            log.congestion = congestion.rawValue
+                            log.notes = notes
+                        } else {
+                            let newLog = SymptomLog(
+                                date: date,
+                                sneezing: sneezing,
+                                itchyEyes: itchyEyes,
+                                congestion: congestion,
+                                notes: notes,
+                                historicalRiskScore: viewModel.assessment.normalizedScore,
+                                historicalDominantAllergen: viewModel.assessment.dominantAllergen
+                            )
+                            modelContext.insert(newLog)
+                        }
                         
-                        modelContext.insert(newLog)
-
                         do {
                             try modelContext.save()
+                            
+                            // Trigger learning logic safely
+                            DispatchQueue.main.async {
+                                // We need to fetch the latest logs to learn from
+                                let descriptor = FetchDescriptor<SymptomLog>()
+                                if let latestLogs = try? modelContext.fetch(descriptor) {
+                                    viewModel.learnFromLogs(latestLogs)
+                                }
+                            }
+                            
                             dismiss()
                         } catch {
-                            modelContext.delete(newLog)
                             saveErrorMessage = "We couldn’t save your log right now. Please try again."
                         }
                     }
@@ -336,48 +387,5 @@ struct SymptomPicker: View {
             .pickerStyle(.segmented)
         }
         .padding(.vertical, 4)
-    }
-}
-
-struct LogDetailView: View {
-    let log: SymptomLog
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                Section(header: Text("Summary")) {
-                    HStack { Text("Date"); Spacer(); Text(log.date.formatted(date: .long, time: .omitted)).foregroundColor(.secondary) }
-                    if let dominant = log.historicalDominantAllergen {
-                        HStack { Text("Dominant Allergen"); Spacer(); Text(dominant.rawValue).foregroundColor(.secondary) }
-                    }
-                    if let risk = log.historicalRiskScore {
-                        HStack { Text("Pollen Risk Level"); Spacer(); Text("\(Int(risk))/100").foregroundColor(.secondary) }
-                    }
-                }
-                Section(header: Text("Symptoms")) {
-                    SymptomDetailRow(title: "Sneezing", severity: log.sneezingSeverity)
-                    SymptomDetailRow(title: "Itchy Eyes", severity: log.itchyEyesSeverity)
-                    SymptomDetailRow(title: "Congestion", severity: log.congestionSeverity)
-                }
-                if !log.notes.isEmpty {
-                    Section(header: Text("Notes")) { Text(log.notes).font(.body) }
-                }
-            }
-            .navigationTitle("Log Details")
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() } } }
-        }
-    }
-}
-
-struct SymptomDetailRow: View {
-    let title: String
-    let severity: SymptomSeverity
-    var body: some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(severity.label).foregroundColor(severity.color).fontWeight(.bold)
-        }
     }
 }

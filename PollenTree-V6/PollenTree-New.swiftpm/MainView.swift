@@ -14,178 +14,167 @@ struct MainView: View {
             NavigationStack {
                 ScrollView {
                     VStack(spacing: 30) {
-                        // Header with Location
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Run, Pollen")
-                                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                                    .accessibilityAddTraits(.isHeader)
-                                
-                                HStack(spacing: 4) {
-                                    Image(systemName: "location.fill")
-                                        .font(.caption)
-                                    Text("Beijing, China")
-                                        .font(.subheadline.bold())
-                                }
-                                .foregroundColor(.secondary)
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Current location: Beijing, China")
-                            }
-                            Spacer()
-                            
-                            HStack(spacing: 16) {
-                                Button {
-                                    showingScience = true
-                                } label: {
-                                    Image(systemName: "book.closed.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.primary)
-                                }
-                                .accessibilityLabel("View Science Mechanics")
-                                
-                                Button {
-                                    showingProfile = true
-                                } label: {
-                                    Image(systemName: "person.crop.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.primary)
-                                }
-                                .accessibilityLabel("Edit Allergy Profile")
-                                
-                                Button {
-                                    showingSettings = true
-                                } label: {
-                                    Image(systemName: "gearshape.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.primary)
-                                }
-                                .accessibilityLabel("App Settings")
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.top)
+                        DashboardHeader(
+                            showingScience: $showingScience,
+                            showingProfile: $showingProfile,
+                            showingSettings: $showingSettings
+                        )
                         
-                        // Main Tree Visualization
                         PollenTreeView(scenario: viewModel.currentScenario)
                             .padding(.horizontal)
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel("Animated Cypress Tree showing current pollen risk level")
                         
-                        // Risk Score Display
-                        VStack(spacing: 12) {
-                            Text("Personal Risk Score")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .tracking(1.2)
-                            
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("\(Int(viewModel.assessment.normalizedScore))")
-                                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                                Text("/ 100")
-                                    .font(.title2.bold())
-                                    .foregroundColor(.secondary.opacity(0.5))
-                            }
-                            
-                            Text(viewModel.assessment.riskLevel.rawValue)
-                                .font(.headline)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 6)
-                                .background(viewModel.assessment.riskLevel.color.opacity(0.1))
-                                .foregroundColor(viewModel.assessment.riskLevel.color)
-                                .cornerRadius(20)
-                        }
-                        .padding(.vertical, 10)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Your personal risk score is \(Int(viewModel.assessment.normalizedScore)) out of 100, which is \(viewModel.assessment.riskLevel.rawValue)")
+                        RiskScoreDisplay(assessment: viewModel.assessment)
                         
-                        // Raw Allergen Data Section
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Current Pollen Levels")
-                                .font(.headline)
-                                .padding(.horizontal)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 15) {
-                                    ForEach(viewModel.currentScenario.environment.measurements) { measurement in
-                                        AllergenLevelCard(measurement: measurement)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                        }
+                        AllergenLevelsSection(measurements: viewModel.currentScenario.environment.measurements)
                         
-                        // Weather Indicators
-                        HStack(spacing: 20) {
-                            WeatherStatView(
-                                icon: "wind", 
-                                value: "\(Int(viewModel.currentScenario.environment.windSpeed))", 
-                                unit: "mph", 
-                                label: "Wind"
-                            )
-                            .accessibilityLabel("Wind speed: \(Int(viewModel.currentScenario.environment.windSpeed)) miles per hour")
-                            
-                            WeatherStatView(
-                                icon: "humidity", 
-                                value: "\(Int(viewModel.currentScenario.environment.humidity))", 
-                                unit: "%", 
-                                label: "Humidity"
-                            )
-                            .accessibilityLabel("Humidity: \(Int(viewModel.currentScenario.environment.humidity)) percent")
-                            
-                            WeatherStatView(
-                                icon: weatherIcon(for: viewModel.currentScenario.environment.weatherVisual), 
-                                value: weatherLabel(for: viewModel.currentScenario.environment.weatherVisual), 
-                                unit: "", 
-                                label: "Condition",
-                                isTextValue: true
-                            )
-                            .accessibilityLabel("Weather condition: \(weatherLabel(for: viewModel.currentScenario.environment.weatherVisual))")
-                        }
-                        .padding(.horizontal)
+                        WeatherIndicatorsSection(environment: viewModel.currentScenario.environment)
                         
-                        // Recommendations
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Daily Advice")
-                                .font(.headline)
-                                .padding(.horizontal)
-                                .accessibilityAddTraits(.isHeader)
-                            
-                            ForEach(viewModel.assessment.recommendations, id: \.self) { advice in
-                                RecommendationRow(text: advice, riskLevel: viewModel.assessment.riskLevel)
-                                    .accessibilityLabel("Advice: \(advice)")
-                            }
-                        }
-                        .padding(.bottom, 30)
+                        DailyAdviceSection(assessment: viewModel.assessment)
                     }
                 }
                 .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
-                .sheet(isPresented: $showingScience) {
-                    ScienceInfoView()
-                }
-                .sheet(isPresented: $showingProfile) {
-                    ProfileManagementView(viewModel: viewModel)
-                }
-                .sheet(isPresented: $showingSettings) {
-                    GeneralSettingsView()
-                }
+                .sheet(isPresented: $showingScience) { ScienceInfoView() }
+                .sheet(isPresented: $showingProfile) { ProfileManagementView(viewModel: viewModel) }
+                .sheet(isPresented: $showingSettings) { GeneralSettingsView() }
             }
-            .tabItem {
-                Label("Forecast", systemImage: "leaf.fill")
-            }
+            .tabItem { Label("Forecast", systemImage: "leaf.fill") }
             
-            // Map Tab
             PollenMapView(profile: viewModel.profile)
-                .tabItem {
-                    Label("Map", systemImage: "map.fill")
-                }
+                .tabItem { Label("Map", systemImage: "map.fill") }
             
-            // Journal Tab
             SymptomJournalView(viewModel: viewModel)
-                .tabItem {
-                    Label("Journal", systemImage: "doc.text.fill")
-                }
+                .tabItem { Label("Journal", systemImage: "doc.text.fill") }
         }
-        .accentColor(.blue) // Changed accent color to blue for a fresh look
+        .accentColor(.blue)
+    }
+}
+
+// MARK: - Sub-views
+
+struct DashboardHeader: View {
+    @Binding var showingScience: Bool
+    @Binding var showingProfile: Bool
+    @Binding var showingSettings: Bool
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Run, Pollen")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .accessibilityAddTraits(.isHeader)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "location.fill").font(.caption)
+                    Text("Beijing, China").font(.subheadline.bold())
+                }
+                .foregroundColor(.secondary)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Current location: Beijing, China")
+            }
+            Spacer()
+            
+            HStack(spacing: 16) {
+                HeaderButton(icon: "book.closed.fill", label: "View Science Mechanics") { showingScience = true }
+                HeaderButton(icon: "person.crop.circle.fill", label: "Edit Allergy Profile") { showingProfile = true }
+                HeaderButton(icon: "gearshape.fill", label: "App Settings") { showingSettings = true }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top)
+    }
+}
+
+struct HeaderButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(.primary)
+        }
+        .accessibilityLabel(label)
+    }
+}
+
+struct RiskScoreDisplay: View {
+    let assessment: RiskAssessment
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("Personal Risk Score")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .tracking(1.2)
+            
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(Int(assessment.normalizedScore))")
+                    .font(.system(size: 72, weight: .bold, design: .rounded))
+                Text("/ 100")
+                    .font(.title2.bold())
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+            
+            Text(assessment.riskLevel.rawValue)
+                .font(.headline)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(assessment.riskLevel.color.opacity(0.1))
+                .foregroundColor(assessment.riskLevel.color)
+                .cornerRadius(20)
+        }
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Your personal risk score is \(Int(assessment.normalizedScore)) out of 100, which is \(assessment.riskLevel.rawValue)")
+    }
+}
+
+struct AllergenLevelsSection: View {
+    let measurements: [PollenMeasurement]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Current Pollen Levels")
+                .font(.headline)
+                .padding(.horizontal)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 15) {
+                    ForEach(measurements) { measurement in
+                        AllergenLevelCard(measurement: measurement)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+}
+
+struct WeatherIndicatorsSection: View {
+    let environment: EnvironmentalData
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            WeatherStatView(icon: "wind", value: "\(Int(environment.windSpeed))", unit: "mph", label: "Wind")
+                .accessibilityLabel("Wind speed: \(Int(environment.windSpeed)) miles per hour")
+            
+            WeatherStatView(icon: "humidity", value: "\(Int(environment.humidity))", unit: "%", label: "Humidity")
+                .accessibilityLabel("Humidity: \(Int(environment.humidity)) percent")
+            
+            WeatherStatView(
+                icon: weatherIcon(for: environment.weatherVisual),
+                value: weatherLabel(for: environment.weatherVisual),
+                unit: "",
+                label: "Condition",
+                isTextValue: true
+            )
+            .accessibilityLabel("Weather condition: \(weatherLabel(for: environment.weatherVisual))")
+        }
+        .padding(.horizontal)
     }
     
     private func weatherIcon(for type: WeatherType) -> String {
@@ -206,6 +195,25 @@ struct MainView: View {
         case .thunderstorm: return "Storm"
         case .snowy: return "Snowy"
         }
+    }
+}
+
+struct DailyAdviceSection: View {
+    let assessment: RiskAssessment
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Daily Advice")
+                .font(.headline)
+                .padding(.horizontal)
+                .accessibilityAddTraits(.isHeader)
+            
+            ForEach(assessment.recommendations, id: \.self) { advice in
+                RecommendationRow(text: advice, riskLevel: assessment.riskLevel)
+                    .accessibilityLabel("Advice: \(advice)")
+            }
+        }
+        .padding(.bottom, 30)
     }
 }
 
@@ -245,7 +253,7 @@ struct WeatherStatView: View {
         VStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(.blue) // Changed to blue
+                .foregroundColor(.blue)
             
             VStack(spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -253,9 +261,7 @@ struct WeatherStatView: View {
                         .font(.system(isTextValue ? .headline : .title3, design: .rounded))
                         .fontWeight(.bold)
                     if !unit.isEmpty {
-                        Text(unit)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                        Text(unit).font(.caption2).foregroundColor(.secondary)
                     }
                 }
                 Text(label)
@@ -332,7 +338,7 @@ struct ProfileManagementView: View {
                                 viewModel.profile.allergyTypes.insert(type)
                             }
                             viewModel.profile.save()
-                            viewModel.refreshAssessment() // Real-time update
+                            viewModel.refreshAssessment()
                         }
                     }
                 }
@@ -344,7 +350,7 @@ struct ProfileManagementView: View {
                             set: { 
                                 viewModel.profile.severityMapping[type] = $0
                                 viewModel.profile.save()
-                                viewModel.refreshAssessment() // Real-time update
+                                viewModel.refreshAssessment()
                             }
                         )) {
                             ForEach(Severity.allCases) { severity in
@@ -360,7 +366,7 @@ struct ProfileManagementView: View {
                         set: { 
                             viewModel.profile.hasTakenTest = $0
                             viewModel.profile.save()
-                            viewModel.refreshAssessment() // Real-time update
+                            viewModel.refreshAssessment()
                         }
                     ))
                 }

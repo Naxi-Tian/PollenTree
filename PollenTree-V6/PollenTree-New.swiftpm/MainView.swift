@@ -102,7 +102,7 @@ struct HeaderButton: View {
 }
 
 struct RiskScoreDisplay: View {
-    let assessment: RiskAssessment
+    let assessment: DashboardViewModel.Assessment
     
     var body: some View {
         VStack(spacing: 12) {
@@ -199,7 +199,7 @@ struct WeatherIndicatorsSection: View {
 }
 
 struct DailyAdviceSection: View {
-    let assessment: RiskAssessment
+    let assessment: DashboardViewModel.Assessment
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -287,18 +287,17 @@ struct RecommendationRow: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(riskLevel.color.opacity(0.15))
+                    .fill(riskLevel.color.opacity(0.1))
                     .frame(width: 40, height: 40)
-                
-                Image(systemName: adviceIcon(for: text))
+                Image(systemName: "info.circle.fill")
                     .foregroundColor(riskLevel.color)
-                    .font(.system(size: 18, weight: .bold))
             }
             
             Text(text)
                 .font(.subheadline)
                 .foregroundColor(.primary)
-                .lineLimit(2)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
             
             Spacer()
         }
@@ -306,121 +305,6 @@ struct RecommendationRow: View {
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
         .padding(.horizontal)
-        .shadow(color: riskLevel.color.opacity(0.1), radius: 4, x: 0, y: 2)
-    }
-    
-    private func adviceIcon(for text: String) -> String {
-        if text.contains("mask") { return "facemask.fill" }
-        if text.contains("windows") { return "window.shade.closed" }
-        if text.contains("outdoor") || text.contains("Avoid") { return "exclamationmark.triangle.fill" }
-        if text.contains("purifier") { return "air.purifier" }
-        if text.contains("shower") { return "shower.fill" }
-        return "info.circle.fill"
-    }
-}
-
-struct ProfileManagementView: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Allergen Triggers") {
-                    ForEach(PollenType.allCases) { type in
-                        MultipleSelectionRow(
-                            title: type.rawValue,
-                            isSelected: viewModel.profile.allergyTypes.contains(type)
-                        ) {
-                            if viewModel.profile.allergyTypes.contains(type) {
-                                viewModel.profile.allergyTypes.remove(type)
-                            } else {
-                                viewModel.profile.allergyTypes.insert(type)
-                            }
-                            viewModel.profile.save()
-                            viewModel.refreshAssessment()
-                        }
-                    }
-                }
-                
-                Section("Sensitivity Levels") {
-                    ForEach(Array(viewModel.profile.allergyTypes).sorted(by: { $0.rawValue < $1.rawValue })) { type in
-                        Picker(type.rawValue, selection: Binding(
-                            get: { viewModel.profile.severityMapping[type] ?? .moderate },
-                            set: { 
-                                viewModel.profile.severityMapping[type] = $0
-                                viewModel.profile.save()
-                                viewModel.refreshAssessment()
-                            }
-                        )) {
-                            ForEach(Severity.allCases) { severity in
-                                Text(severity.rawValue).tag(severity)
-                            }
-                        }
-                    }
-                }
-                
-                Section("Allergy Test Status") {
-                    Toggle("I have taken a clinical test", isOn: Binding(
-                        get: { viewModel.profile.hasTakenTest },
-                        set: { 
-                            viewModel.profile.hasTakenTest = $0
-                            viewModel.profile.save()
-                            viewModel.refreshAssessment()
-                        }
-                    ))
-                }
-            }
-            .navigationTitle("Allergy Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-struct GeneralSettingsView: View {
-    @AppStorage("isDarkMode") private var isDarkMode = false
-    @AppStorage("appLanguage") private var appLanguage = "English"
-    @AppStorage("useAutoTheme") private var useAutoTheme = true
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Appearance") {
-                    Toggle("Automatic (Day/Night)", isOn: $useAutoTheme)
-                    if !useAutoTheme {
-                        Toggle("Dark Mode", isOn: $isDarkMode)
-                    }
-                }
-                
-                Section("Localization") {
-                    Picker("Language", selection: $appLanguage) {
-                        Text("English").tag("English")
-                        Text("Chinese").tag("Chinese")
-                    }
-                }
-                
-                Section("About") {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text("1.2.0").foregroundColor(.secondary)
-                    }
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
     }
 }
 
@@ -435,28 +319,28 @@ struct ScienceInfoView: View {
                         title: "Biological Modeling",
                         icon: "chart.bar.doc.horizontal",
                         color: .blue,
-                        description: "Our engine uses species-specific potency weights. For example, Ragweed is weighted at 1.9x due to its high allergenicity compared to standard tree pollen."
+                        description: "Our engine uses a non-linear mathematical model to simulate how pollen particles interact with your specific sensitivity levels."
                     )
                     
                     ScienceCard(
                         title: "Species Sensitivity",
                         icon: "leaf.fill",
                         color: .green,
-                        description: "The model adjusts risk based on your personal sensitivity. A 'Moderate' count for a highly sensitive user triggers a 'High' risk alert."
+                        description: "Different plants have different potency. We weight allergens like Ragweed and Birch higher due to their aggressive biological impact."
                     )
                     
                     ScienceCard(
                         title: "Atmospheric Physics",
                         icon: "wind",
                         color: .teal,
-                        description: "Wind speed and humidity are factored in. High wind increases dispersal, while high humidity can cause pollen grains to burst, increasing bioavailability."
+                        description: "Wind speed and humidity are factored in real-time. High wind disperses pollen, while high humidity can cause particles to burst."
                     )
                     
                     ScienceCard(
                         title: "Thunderstorm Asthma",
                         icon: "cloud.bolt.rain.fill",
                         color: .purple,
-                        description: "During storms, osmotic shock causes pollen to rupture into tiny sub-particles that penetrate deeper into the lungs, triggering severe reactions."
+                        description: "A rare but dangerous phenomenon where moisture causes pollen to shatter into tiny, deep-lung irritants. We monitor for these specific conditions."
                     )
                 }
                 .padding()
@@ -468,7 +352,6 @@ struct ScienceInfoView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .background(Color(UIColor.systemGroupedBackground))
         }
     }
 }
@@ -486,12 +369,10 @@ struct ScienceCard: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(color.opacity(0.1))
                         .frame(width: 50, height: 50)
-                    
                     Image(systemName: icon)
                         .font(.title2)
                         .foregroundColor(color)
                 }
-                
                 Text(title)
                     .font(.headline)
             }
@@ -505,6 +386,93 @@ struct ScienceCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+    }
+}
+
+struct ProfileManagementView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section(header: Text("Your Triggers")) {
+                    ForEach(PollenType.allCases) { type in
+                        MultipleSelectionRow(
+                            title: type.rawValue,
+                            isSelected: viewModel.profile.allergyTypes.contains(type)
+                        ) {
+                            if viewModel.profile.allergyTypes.contains(type) {
+                                viewModel.profile.allergyTypes.remove(type)
+                            } else {
+                                viewModel.profile.allergyTypes.insert(type)
+                            }
+                            viewModel.profile.save()
+                            viewModel.orchestrateCalculations()
+                        }
+                    }
+                }
+                
+                Section(header: Text("Sensitivity Levels")) {
+                    ForEach(Array(viewModel.profile.allergyTypes).sorted(by: { $0.rawValue < $1.rawValue })) { type in
+                        Picker(type.rawValue, selection: Binding(
+                            get: { viewModel.profile.severityMapping[type] ?? .moderate },
+                            set: { 
+                                viewModel.profile.severityMapping[type] = $0
+                                viewModel.profile.save()
+                                viewModel.orchestrateCalculations()
+                            }
+                        )) {
+                            ForEach(Severity.allCases) { severity in
+                                Text(severity.rawValue).tag(severity)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Allergy Profile")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct GeneralSettingsView: View {
+    @Environment(\.dismiss) var dismiss
+    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("appLanguage") private var appLanguage = "English"
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section(header: Text("Appearance")) {
+                    Toggle("Dark Mode", isOn: $isDarkMode)
+                }
+                
+                Section(header: Text("Localization")) {
+                    Picker("Language", selection: $appLanguage) {
+                        Text("English").tag("English")
+                        Text("Chinese").tag("Chinese")
+                    }
+                }
+                
+                Section(header: Text("About")) {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("1.0.0").foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }

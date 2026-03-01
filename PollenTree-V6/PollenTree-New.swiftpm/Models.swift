@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum WeatherType: String, Hashable {
         case clear, windy, rainy, thunderstorm, snowy
@@ -65,6 +66,15 @@ enum RiskLevel: String {
                     default: self = .severe
                     }
             }
+        
+        var color: Color {
+            switch self {
+            case .low: return .green
+            case .moderate: return .yellow
+            case .high: return .orange
+            case .severe: return .red
+            }
+        }
 }
 
 

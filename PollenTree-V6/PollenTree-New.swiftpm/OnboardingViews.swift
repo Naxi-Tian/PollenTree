@@ -349,9 +349,9 @@ struct VisualSeveritySetupView: View {
     
     private func completeSetup() {
         let profile = AllergyProfile(
-            selectedAllergens: selectedAllergens,
+            allergyTypes: selectedAllergens,
             severityMapping: severityMapping,
-            isLearningMode: isLearningMode
+            hasTestedBefore: .notSure
         )
         profile.save()
         hasCompletedSetup = true

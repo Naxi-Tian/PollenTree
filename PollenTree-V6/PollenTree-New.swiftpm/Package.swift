@@ -25,10 +25,6 @@ let package = Package(
                 .landscapeRight,
                 .landscapeLeft,
                 .portraitUpsideDown(.when(deviceFamilies: [.pad]))
-            ],
-            capabilities: [
-                .appPrivacyReport(explanationString: "We track your symptoms to provide personalized allergy insights."),
-                .localNetwork(explanationString: "Required for map and location services.")
             ]
         )
     ],

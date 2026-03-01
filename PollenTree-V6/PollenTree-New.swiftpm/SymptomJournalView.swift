@@ -261,10 +261,11 @@ struct LogSymptomView: View {
     @State private var itchyEyes: SymptomSeverity = .none
     @State private var congestion: SymptomSeverity = .none
     @State private var notes = ""
+    @State private var saveErrorMessage: String?
     
     // We use safe local mock variables so we don't need the ViewModel in this sheet
     @State private var currentRisk: Double = 65.0
-    @State private var currentDominant: PollenType = .cedar
+    @State private var currentDominant: PollenType = .cedarCypress
     
     var body: some View {
         NavigationStack {
@@ -288,7 +289,7 @@ struct LogSymptomView: View {
                     Button("Save") {
                         let newLog = SymptomLog(
                             date: date,
-                            sneezing: sneezing, // If compiler yells here, add .rawValue!
+                            sneezing: sneezing,
                             itchyEyes: itchyEyes,
                             congestion: congestion,
                             notes: notes,
@@ -296,11 +297,25 @@ struct LogSymptomView: View {
                             historicalDominantAllergen: currentDominant
                         )
                         
-                        // Safely save to memory and leave
                         modelContext.insert(newLog)
-                        dismiss()
+
+                        do {
+                            try modelContext.save()
+                            dismiss()
+                        } catch {
+                            modelContext.delete(newLog)
+                            saveErrorMessage = "We couldn’t save your log right now. Please try again."
+                        }
                     }
                 }
+            }
+            .alert("Save Failed", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Unknown error")
             }
         }
     }

@@ -89,9 +89,7 @@ struct VisualAllergenSelectionView: View {
                         withAnimation {
                             isNotSure.toggle()
                             if isNotSure {
-                                selectedAllergens = Set(PollenType.allCases)
-                            } else {
-                                selectedAllergens = []
+                                selectedAllergens = [] // Deselect any allergens if "I'm not sure" is selected
                             }
                         }
                     } label: {
@@ -114,7 +112,7 @@ struct VisualAllergenSelectionView: View {
                         )
                     }
                     .padding(.horizontal, 20)
-                    .accessibilityLabel("I'm not sure option. Selecting this will enable learning mode for all allergens.")
+                    .accessibilityLabel("I'm not sure option. Selecting this will enable learning mode with standard weights.")
                 }
                 .padding(.bottom, 20)
             }
@@ -127,10 +125,10 @@ struct VisualAllergenSelectionView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(selectedAllergens.isEmpty ? Color.gray : Color.green)
+                    .background((selectedAllergens.isEmpty && !isNotSure) ? Color.gray : Color.green)
                     .cornerRadius(16)
             }
-            .disabled(selectedAllergens.isEmpty)
+            .disabled(selectedAllergens.isEmpty && !isNotSure)
             .padding(.horizontal, 40)
             .padding(.bottom, 40)
             .accessibilityLabel("Continue to severity setup")
@@ -266,31 +264,41 @@ struct VisualSeveritySetupView: View {
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 8) {
-                Text(isLearningMode ? "Learning Mode Enabled" : "How sensitive are you?")
+                Text("Sensitivity")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text(isLearningMode ? "We'll start with equal sensitivity and learn from your logs." : "This helps us calibrate your risk score.")
+                Text(isLearningMode ? "We'll start with standard levels and learn from your logs." : "How sensitive are you to these triggers?")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 40)
             }
             .padding(.top, 20)
-            .accessibilityElement(children: .combine)
             
             if isLearningMode {
-                learningModeInfo
+                VStack(spacing: 30) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 80))
+                        .foregroundColor(.green)
+                    Text("Learning Mode Enabled")
+                        .font(.headline)
+                    Text("By logging your symptoms daily, Run, Pollen will mathematically determine which specific plants affect you most.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+                .frame(maxHeight: .infinity)
             } else {
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 24) {
                         ForEach(Array(selectedAllergens).sorted(by: { $0.rawValue < $1.rawValue })) { type in
                             SeveritySelectionCard(type: type, selection: binding(for: type))
                         }
                     }
                     .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
             }
-            
-            Spacer()
             
             Button {
                 completeSetup()
@@ -305,31 +313,8 @@ struct VisualSeveritySetupView: View {
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 40)
-            .accessibilityLabel("Finish setup and go to dashboard")
         }
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            initializeSeverityMapping()
-        }
-    }
-    
-    private var learningModeInfo: some View {
-        VStack(spacing: 30) {
-            Image(systemName: "brain.head.profile")
-                .font(.system(size: 80))
-                .foregroundColor(.green)
-                .padding(.top, 40)
-            
-            VStack(spacing: 16) {
-                Text("Smart Calibration")
-                    .font(.headline)
-                Text("By logging your symptoms daily, our biological engine will mathematically identify which pollen types trigger you the most.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-        }
     }
     
     private func binding(for type: PollenType) -> Binding<Severity> {
@@ -339,20 +324,16 @@ struct VisualSeveritySetupView: View {
         )
     }
     
-    private func initializeSeverityMapping() {
-        for type in selectedAllergens {
-            if severityMapping[type] == nil {
-                severityMapping[type] = .moderate
-            }
-        }
-    }
-    
     private func completeSetup() {
-        let profile = AllergyProfile(
-            allergyTypes: selectedAllergens,
-            severityMapping: severityMapping,
-            hasTestedBefore: .notSure
-        )
+        var profile = AllergyProfile()
+        if isLearningMode {
+            // In learning mode, we don't pre-select allergens, but we set standard weights
+            profile.allergyTypes = [] 
+            profile.severityMapping = [:]
+        } else {
+            profile.allergyTypes = selectedAllergens
+            profile.severityMapping = severityMapping
+        }
         profile.save()
         hasCompletedSetup = true
     }
@@ -365,12 +346,10 @@ struct SeveritySelectionCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(type.rawValue)
-                    .font(.headline)
-                Spacer()
-                Text(selection.rawValue)
-                    .font(.subheadline.bold())
-                    .foregroundColor(.green)
+                AllergenDiagram(type: type)
+                    .scaleEffect(0.3)
+                    .frame(width: 30, height: 30)
+                Text(type.rawValue).font(.headline)
             }
             
             Picker("Severity", selection: $selection) {
@@ -378,32 +357,28 @@ struct SeveritySelectionCard: View {
                     Text(severity.rawValue).tag(severity)
                 }
             }
-            .pickerStyle(SegmentedPickerStyle())
+            .pickerStyle(.segmented)
         }
         .padding()
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(type.rawValue) sensitivity: \(selection.rawValue)")
     }
 }
 
 struct MultipleSelectionRow: View {
-    var title: String
-    var isSelected: Bool
-    var action: () -> Void
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
     
     var body: some View {
         Button(action: action) {
             HStack {
                 Text(title)
+                Spacer()
                 if isSelected {
-                    Spacer()
-                    Image(systemName: "checkmark")
-                        .foregroundColor(.green)
+                    Image(systemName: "checkmark").foregroundColor(.green)
                 }
             }
         }
-        .foregroundColor(.primary)
     }
 }

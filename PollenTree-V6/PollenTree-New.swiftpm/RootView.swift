@@ -4,7 +4,13 @@ struct RootView: View {
     @AppStorage("hasCompletedSetup") var hasCompletedSetup: Bool = false
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("appLanguage") private var appLanguage = "English"
+    @AppStorage("useAutoTheme") private var useAutoTheme = true
     @State private var isLaunching = true
+    
+    private var isDaytime: Bool {
+        let hour = Calendar.current.component(.hour, from: Date())
+        return hour >= 6 && hour < 18
+    }
     
     var body: some View {
         ZStack {
@@ -34,7 +40,7 @@ struct RootView: View {
                 .animation(.easeInOut, value: hasCompletedSetup)
             }
         }
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+        .preferredColorScheme(useAutoTheme ? (isDaytime ? .light : .dark) : (isDarkMode ? .dark : .light))
         .environment(\.locale, Locale(identifier: appLanguage == "Chinese" ? "zh-Hans" : "en"))
     }
 }

@@ -4,22 +4,23 @@ import SwiftUI
 // The main entry points are in MainView.swift as ProfileManagementView and GeneralSettingsView
 
 struct EditAllergensView: View {
-    @Binding var profile: AllergyProfile
+    @ObservedObject var viewModel: DashboardViewModel
     
     var body: some View {
         List {
             ForEach(PollenType.allCases) { type in
-                MultipleSelectionRow(title: type.rawValue, isSelected: profile.allergyTypes.contains(type)) {
-                    if profile.allergyTypes.contains(type) {
-                        profile.allergyTypes.remove(type)
-                        profile.severityMapping.removeValue(forKey: type)
+                MultipleSelectionRow(title: type.rawValue, isSelected: viewModel.profile.allergyTypes.contains(type)) {
+                    if viewModel.profile.allergyTypes.contains(type) {
+                        viewModel.profile.allergyTypes.remove(type)
+                        viewModel.profile.severityMapping.removeValue(forKey: type)
                     } else {
-                        profile.allergyTypes.insert(type)
-                        profile.severityMapping[type] = .moderate
+                        viewModel.profile.allergyTypes.insert(type)
+                        viewModel.profile.severityMapping[type] = .moderate
                     }
-                    profile.save()
+                    viewModel.profile.save()
+                    viewModel.orchestrateCalculations()
                 }
-                .accessibilityLabel("\(type.rawValue), \(profile.allergyTypes.contains(type) ? "Selected" : "Not selected")")
+                .accessibilityLabel("\(type.rawValue), \(viewModel.profile.allergyTypes.contains(type) ? "Selected" : "Not selected")")
                 .accessibilityHint("Double tap to toggle selection")
             }
         }
@@ -28,23 +29,24 @@ struct EditAllergensView: View {
 }
 
 struct EditSeverityView: View {
-    @Binding var profile: AllergyProfile
+    @ObservedObject var viewModel: DashboardViewModel
     
     var body: some View {
         List {
-            if profile.allergyTypes.isEmpty {
+            if viewModel.profile.allergyTypes.isEmpty {
                 Text("No allergens selected. Go back to select your triggers first.")
                     .foregroundColor(.secondary)
             } else {
-                ForEach(Array(profile.allergyTypes).sorted(by: { $0.rawValue < $1.rawValue })) { type in
+                ForEach(Array(viewModel.profile.allergyTypes).sorted(by: { $0.rawValue < $1.rawValue })) { type in
                     VStack(alignment: .leading, spacing: 12) {
                         Text(type.rawValue).font(.headline)
                         
                         Picker("Severity for \(type.rawValue)", selection: Binding(
-                            get: { profile.severityMapping[type] ?? .moderate },
+                            get: { viewModel.profile.severityMapping[type] ?? .moderate },
                             set: { 
-                                profile.severityMapping[type] = $0
-                                profile.save()
+                                viewModel.profile.severityMapping[type] = $0
+                                viewModel.profile.save()
+                                viewModel.orchestrateCalculations()
                             }
                         )) {
                             ForEach(Severity.allCases) { severity in

@@ -8,6 +8,9 @@ struct SymptomJournalView: View {
     @State private var showingLogSheet = false
     @State private var selectedLog: SymptomLog?
     
+    // Use the shared ViewModel from the environment or parent
+    @ObservedObject var viewModel: DashboardViewModel
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -154,7 +157,7 @@ struct SymptomJournalView: View {
             .navigationTitle("Journal")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingLogSheet) {
-                LogSymptomView()
+                LogSymptomView(viewModel: viewModel)
             }
             .sheet(item: $selectedLog) { log in
                 LogDetailView(log: log)
@@ -241,8 +244,8 @@ struct LogSymptomView: View {
     @State private var congestion: SymptomSeverity = .none
     @State private var notes = ""
     
-    // Using a temporary ViewModel to get current risk data
-    @StateObject private var viewModel = DashboardViewModel()
+    // Use the passed ViewModel
+    @ObservedObject var viewModel: DashboardViewModel
     
     var body: some View {
         NavigationStack {
@@ -280,7 +283,7 @@ struct LogSymptomView: View {
                         )
                         modelContext.insert(newLog)
                         
-                        // Trigger learning logic
+                        // Trigger learning logic with the updated list
                         viewModel.learnFromLogs(logs + [newLog])
                         
                         dismiss()

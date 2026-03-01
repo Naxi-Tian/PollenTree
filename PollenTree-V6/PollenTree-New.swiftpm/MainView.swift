@@ -62,12 +62,12 @@ struct DashboardHeader: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Run, Pollen")
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(Font.system(size: 34, weight: .bold, design: .rounded))
                     .accessibilityAddTraits(.isHeader)
                 
                 HStack(spacing: 4) {
-                    Image(systemName: "location.fill").font(.caption)
-                    Text("Beijing, China").font(.subheadline.bold())
+                    Image(systemName: "location.fill").font(Font.caption)
+                    Text("Beijing, China").font(Font.subheadline.bold())
                 }
                 .foregroundColor(.secondary)
                 .accessibilityElement(children: .combine)
@@ -94,7 +94,7 @@ struct HeaderButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(Font.title2)
                 .foregroundColor(.primary)
         }
         .accessibilityLabel(label)
@@ -107,20 +107,20 @@ struct RiskScoreDisplay: View {
     var body: some View {
         VStack(spacing: 12) {
             Text("Personal Risk Score")
-                .font(.subheadline)
+                .font(Font.subheadline)
                 .foregroundColor(.secondary)
                 .tracking(1.2)
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(Int(assessment.normalizedScore))")
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
+                    .font(Font.system(size: 72, weight: .bold, design: .rounded))
                 Text("/ 100")
-                    .font(.title2.bold())
-                    .foregroundColor(.secondary.opacity(0.5))
+                    .font(Font.title2.bold())
+                    .foregroundColor(Color.secondary.opacity(0.5))
             }
             
             Text(assessment.riskLevel.rawValue)
-                .font(.headline)
+                .font(Font.headline)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
                 .background(assessment.riskLevel.color.opacity(0.1))
@@ -139,7 +139,7 @@ struct AllergenLevelsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Current Pollen Levels")
-                .font(.headline)
+                .font(Font.headline)
                 .padding(.horizontal)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -204,7 +204,7 @@ struct DailyAdviceSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Daily Advice")
-                .font(.headline)
+                .font(Font.headline)
                 .padding(.horizontal)
                 .accessibilityAddTraits(.isHeader)
             
@@ -228,17 +228,17 @@ struct AllergenLevelCard: View {
             
             VStack(spacing: 2) {
                 Text(measurement.type.rawValue)
-                    .font(.caption2.bold())
+                    .font(Font.caption2.bold())
                     .foregroundColor(.secondary)
                 Text("\(Int(measurement.count))")
-                    .font(.system(.subheadline, design: .rounded))
+                    .font(Font.system(.subheadline, design: .rounded))
                     .fontWeight(.bold)
             }
         }
         .frame(width: 85, height: 100)
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
 }
 
@@ -252,20 +252,20 @@ struct WeatherStatView: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(Font.title2)
                 .foregroundColor(.blue)
             
             VStack(spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
-                        .font(.system(isTextValue ? .headline : .title3, design: .rounded))
+                        .font(Font.system(isTextValue ? .headline : .title3, design: .rounded))
                         .fontWeight(.bold)
                     if !unit.isEmpty {
-                        Text(unit).font(.caption2).foregroundColor(.secondary)
+                        Text(unit).font(Font.caption2).foregroundColor(.secondary)
                     }
                 }
                 Text(label)
-                    .font(.caption2)
+                    .font(Font.caption2)
                     .foregroundColor(.secondary)
                     .textCase(.uppercase)
                     .tracking(1.0)
@@ -275,7 +275,7 @@ struct WeatherStatView: View {
         .padding(.vertical, 16)
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
 }
 
@@ -294,7 +294,7 @@ struct RecommendationRow: View {
             }
             
             Text(text)
-                .font(.subheadline)
+                .font(Font.subheadline)
                 .foregroundColor(.primary)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -370,15 +370,15 @@ struct ScienceCard: View {
                         .fill(color.opacity(0.1))
                         .frame(width: 50, height: 50)
                     Image(systemName: icon)
-                        .font(.title2)
+                        .font(Font.title2)
                         .foregroundColor(color)
                 }
                 Text(title)
-                    .font(.headline)
+                    .font(Font.headline)
             }
             
             Text(description)
-                .font(.subheadline)
+                .font(Font.subheadline)
                 .foregroundColor(.secondary)
                 .lineSpacing(4)
         }

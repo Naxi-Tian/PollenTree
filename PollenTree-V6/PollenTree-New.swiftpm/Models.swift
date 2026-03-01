@@ -76,5 +76,3 @@ enum RiskLevel: String {
             }
         }
 }
-
-

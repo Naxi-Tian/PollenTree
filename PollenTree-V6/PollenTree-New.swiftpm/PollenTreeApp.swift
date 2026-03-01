@@ -7,6 +7,6 @@ struct RunPollenApp: App {
         WindowGroup {
             RootView()
         }
-        .modelContainer(for: [SymptomLog.self])
+        .modelContainer(for: SymptomLog.self)
     }
 }

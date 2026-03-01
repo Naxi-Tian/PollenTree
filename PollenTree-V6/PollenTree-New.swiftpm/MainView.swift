@@ -44,7 +44,7 @@ struct MainView: View {
             PollenMapView(profile: viewModel.profile)
                 .tabItem { Label("Map", systemImage: "map.fill") }
             
-            SymptomJournalView(viewModel: viewModel)
+            SymptomJournalView()
                 .tabItem { Label("Journal", systemImage: "doc.text.fill") }
         }
         .accentColor(Color.blue)

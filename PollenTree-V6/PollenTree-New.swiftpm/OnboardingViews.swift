@@ -387,3 +387,23 @@ struct SeveritySelectionCard: View {
         .accessibilityLabel("\(type.rawValue) sensitivity: \(selection.rawValue)")
     }
 }
+
+struct MultipleSelectionRow: View {
+    var title: String
+    var isSelected: Bool
+    var action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                if isSelected {
+                    Spacer()
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.green)
+                }
+            }
+        }
+        .foregroundColor(.primary)
+    }
+}
